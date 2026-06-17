@@ -14,6 +14,25 @@ import {
 // Contenuto editabile della scheda (tutto ciò che l'editor manipola).
 export interface SchedaContent {
   riferimento: string;
+  // Anagrafica / intestazione
+  data: string;
+  oraArrivo: string;
+  nome: string;
+  cognome: string;
+  dataNascita: string;
+  sesso: string;
+  telefono: string;
+  gruppo: string;
+  codiceTriage: string;
+  oraInizioTrattamento: string;
+  responsabile: string;
+  // Valutazione iniziale (ABCDE) + esito
+  coscienza: string;
+  vieAeree: string;
+  respiro: string;
+  circolo: string;
+  addome: string;
+  esito: string;
   sintomi: Sintomi;
   parametri: ParametroVitale[];
   anamnesi: string;
@@ -39,10 +58,22 @@ export interface SchedaListItem {
   id: string;
   status: SchedaStatus;
   riferimento: string;
+  cognome: string;
+  nome: string;
   sintomi: Sintomi;
   createdAt: string;
   updatedAt: string;
   completedAt: string | null;
+}
+
+// Etichetta della scheda per la lista: "Cognome Nome" se presenti, altrimenti
+// il riferimento, altrimenti un placeholder.
+export function etichettaScheda(s: { cognome: string; nome: string; riferimento: string }): string {
+  const nominativo = [s.cognome, s.nome]
+    .map((x) => x.trim())
+    .filter(Boolean)
+    .join(" ");
+  return nominativo || s.riferimento.trim() || "(senza riferimento)";
 }
 
 // Coercizione difensiva dei campi Json (sconosciuti a livello di tipo Prisma).
@@ -58,6 +89,23 @@ interface SchedaRowLike {
   terapieSomministrate: unknown;
   diario: unknown;
   riferimento: string;
+  data: string;
+  oraArrivo: string;
+  nome: string;
+  cognome: string;
+  dataNascita: string;
+  sesso: string;
+  telefono: string;
+  gruppo: string;
+  codiceTriage: string;
+  oraInizioTrattamento: string;
+  responsabile: string;
+  coscienza: string;
+  vieAeree: string;
+  respiro: string;
+  circolo: string;
+  addome: string;
+  esito: string;
   anamnesi: string;
   terapiaDomiciliare: string;
   negaTerapiaDomiciliare: boolean;
@@ -73,6 +121,23 @@ export function normalizeSintomi(raw: unknown): Sintomi {
 export function toContent(row: SchedaRowLike): SchedaContent {
   return {
     riferimento: row.riferimento,
+    data: row.data,
+    oraArrivo: row.oraArrivo,
+    nome: row.nome,
+    cognome: row.cognome,
+    dataNascita: row.dataNascita,
+    sesso: row.sesso,
+    telefono: row.telefono,
+    gruppo: row.gruppo,
+    codiceTriage: row.codiceTriage,
+    oraInizioTrattamento: row.oraInizioTrattamento,
+    responsabile: row.responsabile,
+    coscienza: row.coscienza,
+    vieAeree: row.vieAeree,
+    respiro: row.respiro,
+    circolo: row.circolo,
+    addome: row.addome,
+    esito: row.esito,
     sintomi: sintomiSafe.parse(row.sintomi),
     parametri: parametriArray.parse(row.parametri),
     anamnesi: row.anamnesi,

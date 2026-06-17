@@ -9,6 +9,8 @@ const listSelect = {
   id: true,
   status: true,
   riferimento: true,
+  cognome: true,
+  nome: true,
   sintomi: true,
   createdAt: true,
   updatedAt: true,

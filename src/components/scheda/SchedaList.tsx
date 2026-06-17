@@ -28,7 +28,7 @@ import StatusChip from "@/components/scheda/StatusChip";
 import { useCreateScheda, useDeleteScheda, useSchede } from "@/hooks/useSchede";
 import { useToast } from "@/context/ToastContext";
 import { CATEGORIE_SINTOMI } from "@/lib/sintomi";
-import type { SchedaListItem } from "@/lib/scheda";
+import { etichettaScheda, type SchedaListItem } from "@/lib/scheda";
 
 function riepilogoSintomi(sintomi: SchedaListItem["sintomi"]): string {
   const labels = CATEGORIE_SINTOMI.filter((c) => {
@@ -89,7 +89,7 @@ export default function SchedaList({ initialSchede }: { initialSchede: SchedaLis
           <Table>
             <TableHead>
               <TableRow>
-                <TableCell>Riferimento</TableCell>
+                <TableCell>Paziente / Riferimento</TableCell>
                 <TableCell>Stato</TableCell>
                 <TableCell>Sintomi</TableCell>
                 <TableCell>Aggiornata</TableCell>
@@ -105,7 +105,7 @@ export default function SchedaList({ initialSchede }: { initialSchede: SchedaLis
                       href={`/schede/${scheda.id}`}
                       sx={{ color: "primary.main", textDecoration: "none", fontWeight: 600 }}
                     >
-                      {scheda.riferimento.trim() || "(senza riferimento)"}
+                      {etichettaScheda(scheda)}
                     </Typography>
                   </TableCell>
                   <TableCell>

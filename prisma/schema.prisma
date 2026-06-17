@@ -21,8 +21,29 @@ model Scheda {
   id     String       @id @default(cuid())
   status SchedaStatus @default(DRAFT)
 
-  // Etichetta riconoscibile per la lista (iniziali / codice intervento). Privacy-friendly.
+  // Etichetta riconoscibile per la lista (iniziali / codice intervento).
   riferimento String @default("")
+
+  // Anagrafica / intestazione (date e ore come stringhe, formato input nativo).
+  data                 String @default("")
+  oraArrivo            String @default("")
+  nome                 String @default("")
+  cognome              String @default("")
+  dataNascita          String @default("")
+  sesso                String @default("")
+  telefono             String @default("")
+  gruppo               String @default("")
+  codiceTriage         String @default("")
+  oraInizioTrattamento String @default("")
+  responsabile         String @default("")
+
+  // Valutazione iniziale (ABCDE) + esito.
+  coscienza String @default("")
+  vieAeree  String @default("")
+  respiro   String @default("")
+  circolo   String @default("")
+  addome    String @default("")
+  esito     String @default("")
 
   // Sintomi (SAMPLE): { [categoriaId]: { codici: string[], note?: string } }
   sintomi Json @default("{}")

@@ -70,6 +70,28 @@ export type Sintomi = z.infer<typeof SintomiSchema>;
 
 const contentShape = {
   riferimento: z.string().max(120),
+
+  // Anagrafica / intestazione
+  data: z.string().max(20),
+  oraArrivo: z.string().max(20),
+  nome: z.string().max(100),
+  cognome: z.string().max(100),
+  dataNascita: z.string().max(20),
+  sesso: z.string().max(20),
+  telefono: z.string().max(40),
+  gruppo: z.string().max(40),
+  codiceTriage: z.string().max(20),
+  oraInizioTrattamento: z.string().max(20),
+  responsabile: z.string().max(120),
+
+  // Valutazione iniziale (ABCDE) + esito
+  coscienza: z.string().max(500),
+  vieAeree: z.string().max(500),
+  respiro: z.string().max(500),
+  circolo: z.string().max(500),
+  addome: z.string().max(500),
+  esito: z.string().max(1000),
+
   sintomi: SintomiSchema,
   parametri: z.array(ParametroVitaleSchema).max(200),
   anamnesi: z.string().max(5000),

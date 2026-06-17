@@ -13,7 +13,7 @@ import StatusChip from "@/components/scheda/StatusChip";
 import SchedaEditor from "@/components/scheda/SchedaEditor";
 import SchedaView from "@/components/scheda/SchedaView";
 import { db } from "@/lib/db";
-import { toContent, type SchedaDTO } from "@/lib/scheda";
+import { etichettaScheda, toContent, type SchedaDTO } from "@/lib/scheda";
 
 export const dynamic = "force-dynamic";
 
@@ -60,7 +60,7 @@ export default async function SchedaPage({ params }: { params: Promise<{ id: str
               }}
             >
               <Box>
-                <Typography variant="h1">{scheda.riferimento.trim() || "Scheda"}</Typography>
+                <Typography variant="h1">{etichettaScheda(scheda)}</Typography>
                 {scheda.completedAt && (
                   <Typography variant="body2" color="text.secondary">
                     Completata il{" "}

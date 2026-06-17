@@ -8,6 +8,7 @@ import Button from "@mui/material/Button";
 import TextField from "@mui/material/TextField";
 import FormControlLabel from "@mui/material/FormControlLabel";
 import Checkbox from "@mui/material/Checkbox";
+import MenuItem from "@mui/material/MenuItem";
 import Dialog from "@mui/material/Dialog";
 import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
@@ -26,6 +27,19 @@ import { useToast } from "@/context/ToastContext";
 import type { SchedaContent, SchedaDTO } from "@/lib/scheda";
 
 const AUTOSAVE_DELAY_MS = 1000;
+
+const SESSO_OPTIONS = ["M", "F", "Altro"];
+const TRIAGE_OPTIONS = ["Rosso", "Arancione", "Azzurro", "Verde", "Bianco"];
+
+// sx riutilizzabile per la griglia responsive dei campi.
+const gridSx = {
+  display: "grid",
+  gap: 2,
+  gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr", md: "1fr 1fr 1fr" },
+} as const;
+
+// Label "shrink" forzata per gli input nativi date/time (altrimenti si sovrappone).
+const shrinkLabel = { inputLabel: { shrink: true } } as const;
 
 function toContent(dto: SchedaDTO): SchedaContent {
   const { id, status, createdAt, updatedAt, completedAt, ...content } = dto;
@@ -145,6 +159,141 @@ export default function SchedaEditor({ scheda }: { scheda: SchedaDTO }) {
         </Box>
       </Box>
 
+      <Section title="Dati paziente">
+        <Box sx={gridSx}>
+          <TextField
+            label="Data"
+            type="date"
+            value={content.data}
+            onChange={(e) => setField("data", e.target.value)}
+            size="small"
+            slotProps={shrinkLabel}
+          />
+          <TextField
+            label="Ora arrivo"
+            type="time"
+            value={content.oraArrivo}
+            onChange={(e) => setField("oraArrivo", e.target.value)}
+            size="small"
+            slotProps={shrinkLabel}
+          />
+          <TextField
+            label="Ora inizio trattamento"
+            type="time"
+            value={content.oraInizioTrattamento}
+            onChange={(e) => setField("oraInizioTrattamento", e.target.value)}
+            size="small"
+            slotProps={shrinkLabel}
+          />
+          <TextField
+            label="Cognome"
+            value={content.cognome}
+            onChange={(e) => setField("cognome", e.target.value)}
+            size="small"
+          />
+          <TextField
+            label="Nome"
+            value={content.nome}
+            onChange={(e) => setField("nome", e.target.value)}
+            size="small"
+          />
+          <TextField
+            label="Data di nascita"
+            type="date"
+            value={content.dataNascita}
+            onChange={(e) => setField("dataNascita", e.target.value)}
+            size="small"
+            slotProps={shrinkLabel}
+          />
+          <TextField
+            select
+            label="Sesso"
+            value={content.sesso}
+            onChange={(e) => setField("sesso", e.target.value)}
+            size="small"
+          >
+            <MenuItem value="">
+              <em>—</em>
+            </MenuItem>
+            {SESSO_OPTIONS.map((o) => (
+              <MenuItem key={o} value={o}>
+                {o}
+              </MenuItem>
+            ))}
+          </TextField>
+          <TextField
+            label="Telefono"
+            type="tel"
+            value={content.telefono}
+            onChange={(e) => setField("telefono", e.target.value)}
+            size="small"
+          />
+          <TextField
+            label="Gruppo"
+            value={content.gruppo}
+            onChange={(e) => setField("gruppo", e.target.value)}
+            size="small"
+          />
+          <TextField
+            select
+            label="Codice triage"
+            value={content.codiceTriage}
+            onChange={(e) => setField("codiceTriage", e.target.value)}
+            size="small"
+          >
+            <MenuItem value="">
+              <em>—</em>
+            </MenuItem>
+            {TRIAGE_OPTIONS.map((o) => (
+              <MenuItem key={o} value={o}>
+                {o}
+              </MenuItem>
+            ))}
+          </TextField>
+          <TextField
+            label="Responsabile"
+            value={content.responsabile}
+            onChange={(e) => setField("responsabile", e.target.value)}
+            size="small"
+          />
+        </Box>
+      </Section>
+
+      <Section title="Valutazione iniziale">
+        <Box sx={gridSx}>
+          <TextField
+            label="Coscienza"
+            value={content.coscienza}
+            onChange={(e) => setField("coscienza", e.target.value)}
+            size="small"
+          />
+          <TextField
+            label="Vie aeree"
+            value={content.vieAeree}
+            onChange={(e) => setField("vieAeree", e.target.value)}
+            size="small"
+          />
+          <TextField
+            label="Respiro"
+            value={content.respiro}
+            onChange={(e) => setField("respiro", e.target.value)}
+            size="small"
+          />
+          <TextField
+            label="Circolo"
+            value={content.circolo}
+            onChange={(e) => setField("circolo", e.target.value)}
+            size="small"
+          />
+          <TextField
+            label="Addome"
+            value={content.addome}
+            onChange={(e) => setField("addome", e.target.value)}
+            size="small"
+          />
+        </Box>
+      </Section>
+
       <Section title="Sintomi (SAMPLE)">
         <SintomiSection value={content.sintomi} onChange={(v) => setField("sintomi", v)} />
       </Section>
@@ -223,6 +372,16 @@ export default function SchedaEditor({ scheda }: { scheda: SchedaDTO }) {
           fullWidth
           multiline
           minRows={3}
+        />
+      </Section>
+
+      <Section title="Esito">
+        <TextField
+          value={content.esito}
+          onChange={(e) => setField("esito", e.target.value)}
+          fullWidth
+          multiline
+          minRows={2}
         />
       </Section>
 

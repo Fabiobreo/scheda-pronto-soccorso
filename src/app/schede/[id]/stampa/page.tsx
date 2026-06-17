@@ -7,7 +7,7 @@ import Typography from "@mui/material/Typography";
 import PrintControls from "@/components/scheda/PrintControls";
 import SchedaView from "@/components/scheda/SchedaView";
 import { db } from "@/lib/db";
-import { toContent } from "@/lib/scheda";
+import { etichettaScheda, toContent } from "@/lib/scheda";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +17,8 @@ export default async function StampaPage({ params }: { params: Promise<{ id: str
   if (!row) notFound();
 
   const content = toContent(row);
-  const titolo = content.riferimento.trim() || "Scheda di pronto soccorso";
+  const etichetta = etichettaScheda(content);
+  const titolo = etichetta === "(senza riferimento)" ? "Scheda di pronto soccorso" : etichetta;
 
   return (
     <Container maxWidth="md" sx={{ py: 4 }}>

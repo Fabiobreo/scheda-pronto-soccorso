@@ -17,6 +17,30 @@ function TestoLibero({ value }: { value: string }) {
   return <Typography sx={{ whiteSpace: "pre-wrap" }}>{text}</Typography>;
 }
 
+// Griglia "label: valore" che mostra solo i campi valorizzati.
+function CampiGriglia({ campi }: { campi: [string, string][] }) {
+  const valorizzati = campi.filter(([, v]) => v.trim().length > 0);
+  if (valorizzati.length === 0) return <Typography color="text.secondary">—</Typography>;
+  return (
+    <Box
+      sx={{
+        display: "grid",
+        gap: 1,
+        gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr", md: "1fr 1fr 1fr" },
+      }}
+    >
+      {valorizzati.map(([label, value]) => (
+        <Box key={label}>
+          <Typography component="span" sx={{ fontWeight: 700 }}>
+            {label}:
+          </Typography>{" "}
+          <Typography component="span">{value}</Typography>
+        </Box>
+      ))}
+    </Box>
+  );
+}
+
 function SintomiView({ sintomi }: { sintomi: SchedaContent["sintomi"] }) {
   const righe = CATEGORIE_SINTOMI.map((cat) => {
     const sel = sintomi[cat.id];
@@ -53,6 +77,36 @@ export default function SchedaView({ content }: { content: SchedaContent }) {
 
   return (
     <Box>
+      <Section title="Dati paziente">
+        <CampiGriglia
+          campi={[
+            ["Data", content.data],
+            ["Ora arrivo", content.oraArrivo],
+            ["Ora inizio trattamento", content.oraInizioTrattamento],
+            ["Cognome", content.cognome],
+            ["Nome", content.nome],
+            ["Data di nascita", content.dataNascita],
+            ["Sesso", content.sesso],
+            ["Telefono", content.telefono],
+            ["Gruppo", content.gruppo],
+            ["Codice triage", content.codiceTriage],
+            ["Responsabile", content.responsabile],
+          ]}
+        />
+      </Section>
+
+      <Section title="Valutazione iniziale">
+        <CampiGriglia
+          campi={[
+            ["Coscienza", content.coscienza],
+            ["Vie aeree", content.vieAeree],
+            ["Respiro", content.respiro],
+            ["Circolo", content.circolo],
+            ["Addome", content.addome],
+          ]}
+        />
+      </Section>
+
       <Section title="Sintomi (SAMPLE)">
         <SintomiView sintomi={content.sintomi} />
       </Section>
@@ -140,6 +194,10 @@ export default function SchedaView({ content }: { content: SchedaContent }) {
 
       <Section title="Conclusioni e indicazioni">
         <TestoLibero value={content.conclusioni} />
+      </Section>
+
+      <Section title="Esito">
+        <TestoLibero value={content.esito} />
       </Section>
     </Box>
   );
