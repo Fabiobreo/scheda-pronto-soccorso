@@ -25,7 +25,7 @@ visualizzare/stampare (stampa nativa del browser → PDF).
 
 ```
 npm run dev          # next dev (Turbopack)
-npm run build        # prisma generate && next build
+npm run build        # prisma generate && prisma migrate deploy && next build
 npm run db:migrate   # prisma migrate dev
 npm run db:generate  # prisma generate
 npm run db:studio    # prisma studio

@@ -21,7 +21,7 @@ npm run dev                 # http://localhost:3000
 Comandi utili:
 
 ```bash
-npm run build         # prisma generate && next build
+npm run build         # prisma generate && prisma migrate deploy && next build
 npm run lint
 npm run format
 npm run test
@@ -35,14 +35,13 @@ npm run db:studio     # Prisma Studio
    - `DIRECT_URL` → stringa **diretta**, usata da Prisma Migrate.
 
 2. **Vercel — importa il repo GitHub**: aggiungi `DATABASE_URL` e `DIRECT_URL` tra le
-   Environment Variables del progetto. La build gira con `npm run build`
-   (`prisma generate && next build`).
+   Environment Variables del progetto, **per tutti gli ambienti** (Production +
+   Preview). Dopo aver aggiunto/modificato le env var serve un **Redeploy**.
 
-3. **Migrazione in produzione** (una tantum, dal tuo PC con le env di Neon):
-
-   ```bash
-   npx prisma migrate deploy
-   ```
+3. **Migrazioni automatiche al deploy**: la build esegue
+   `prisma generate && prisma migrate deploy && next build`, quindi ogni deploy
+   applica al database le migration committate. Perché funzioni, le migration in
+   `prisma/migrations/` devono essere sul branch che Vercel sta deployando.
 
 > Nota: l'app parte **pubblica** (nessuna autenticazione). `src/lib/apiAuth.ts` è lo
 > stub predisposto per innestare Auth.js v5 più avanti senza riscrivere le route.
