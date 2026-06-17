@@ -20,7 +20,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="it" className={inter.variable} suppressHydrationWarning>
-      <body>
+      {/* suppressHydrationWarning: alcune estensioni del browser (es. Grammarly)
+          iniettano attributi data-gr-* nel body prima dell'hydration di React. */}
+      <body suppressHydrationWarning>
         <Providers>{children}</Providers>
       </body>
     </html>
