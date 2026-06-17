@@ -1,0 +1,38 @@
+import { notFound } from "next/navigation";
+import { format } from "date-fns";
+import { it } from "date-fns/locale";
+import Box from "@mui/material/Box";
+import Container from "@mui/material/Container";
+import Typography from "@mui/material/Typography";
+import PrintControls from "@/components/scheda/PrintControls";
+import SchedaView from "@/components/scheda/SchedaView";
+import { db } from "@/lib/db";
+import { toContent } from "@/lib/scheda";
+
+export const dynamic = "force-dynamic";
+
+export default async function StampaPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const row = await db.scheda.findUnique({ where: { id } });
+  if (!row) notFound();
+
+  const content = toContent(row);
+  const titolo = content.riferimento.trim() || "Scheda di pronto soccorso";
+
+  return (
+    <Container maxWidth="md" sx={{ py: 4 }}>
+      <PrintControls />
+
+      <Box sx={{ mb: 3 }}>
+        <Typography variant="h1">{titolo}</Typography>
+        <Typography variant="body2" color="text.secondary">
+          {row.status === "COMPLETED" && row.completedAt
+            ? `Completata il ${format(new Date(row.completedAt), "d MMMM yyyy, HH:mm", { locale: it })}`
+            : `Bozza · aggiornata il ${format(new Date(row.updatedAt), "d MMMM yyyy, HH:mm", { locale: it })}`}
+        </Typography>
+      </Box>
+
+      <SchedaView content={content} />
+    </Container>
+  );
+}

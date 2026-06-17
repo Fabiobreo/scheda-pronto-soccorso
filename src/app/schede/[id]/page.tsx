@@ -1,0 +1,85 @@
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { format } from "date-fns";
+import { it } from "date-fns/locale";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import Container from "@mui/material/Container";
+import Typography from "@mui/material/Typography";
+import PrintIcon from "@mui/icons-material/Print";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import TopBar from "@/components/TopBar";
+import StatusChip from "@/components/scheda/StatusChip";
+import SchedaEditor from "@/components/scheda/SchedaEditor";
+import SchedaView from "@/components/scheda/SchedaView";
+import { db } from "@/lib/db";
+import { toContent, type SchedaDTO } from "@/lib/scheda";
+
+export const dynamic = "force-dynamic";
+
+export default async function SchedaPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const row = await db.scheda.findUnique({ where: { id } });
+  if (!row) notFound();
+
+  const content = toContent(row);
+  const scheda: SchedaDTO = {
+    ...content,
+    id: row.id,
+    status: row.status,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+    completedAt: row.completedAt?.toISOString() ?? null,
+  };
+
+  const isCompleted = scheda.status === "COMPLETED";
+
+  return (
+    <>
+      <TopBar />
+      <Container maxWidth="md" sx={{ py: 4 }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
+          <Link href="/">
+            <Button size="small" startIcon={<ArrowBackIcon />}>
+              Schede
+            </Button>
+          </Link>
+          <StatusChip status={scheda.status} />
+        </Box>
+
+        {isCompleted ? (
+          <>
+            <Box
+              sx={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: 2,
+                justifyContent: "space-between",
+                alignItems: "center",
+                mb: 3,
+              }}
+            >
+              <Box>
+                <Typography variant="h1">{scheda.riferimento.trim() || "Scheda"}</Typography>
+                {scheda.completedAt && (
+                  <Typography variant="body2" color="text.secondary">
+                    Completata il{" "}
+                    {format(new Date(scheda.completedAt), "d MMMM yyyy, HH:mm", { locale: it })}
+                  </Typography>
+                )}
+              </Box>
+              <Link href={`/schede/${scheda.id}/stampa`} target="_blank">
+                <Button variant="contained" startIcon={<PrintIcon />}>
+                  Stampa
+                </Button>
+              </Link>
+            </Box>
+            <SchedaView content={content} />
+          </>
+        ) : (
+          <SchedaEditor scheda={scheda} />
+        )}
+      </Container>
+    </>
+  );
+}

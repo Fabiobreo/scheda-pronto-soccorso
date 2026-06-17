@@ -1,0 +1,52 @@
+// Prisma schema — vedi CLAUDE.md per il dominio.
+// Una sola entità `Scheda`: campi scalari come colonne, sezioni a righe ripetute
+// (parametri, terapie, diario) e sintomi selezionati come Json. Autosave = 1 PUT.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum SchedaStatus {
+  DRAFT
+  COMPLETED
+}
+
+model Scheda {
+  id     String       @id @default(cuid())
+  status SchedaStatus @default(DRAFT)
+
+  // Etichetta riconoscibile per la lista (iniziali / codice intervento). Privacy-friendly.
+  riferimento String @default("")
+
+  // Sintomi (SAMPLE): { [categoriaId]: { codici: string[], note?: string } }
+  sintomi Json @default("{}")
+
+  // Monitoraggio parametri: [{ ora, temp, spo2, dolore, pa, fc, fr, hgtt, gcs, rts }]
+  parametri Json @default("[]")
+
+  anamnesi               String  @default("")
+  terapiaDomiciliare     String  @default("")
+  negaTerapiaDomiciliare Boolean @default(false)
+  allergie               String  @default("")
+  negaAllergie           Boolean @default(false)
+
+  // Terapia somministrata: [{ ora, farmaco, dose, via, note? }]
+  terapieSomministrate Json @default("[]")
+
+  // Diario clinico: [{ ora, testo }]
+  diario Json @default("[]")
+
+  conclusioni String @default("")
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  completedAt DateTime?
+
+  @@index([status, updatedAt])
+}
