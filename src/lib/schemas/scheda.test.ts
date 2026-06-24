@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   ParametroVitaleSchema,
+  PatologieSchema,
   SchedaCreateSchema,
   SchedaUpdateSchema,
   SintomiSchema,
@@ -32,6 +33,20 @@ describe("SintomiSchema", () => {
   it("applica i default a codici/note mancanti", () => {
     const res = SintomiSchema.parse({ neurologica: {} });
     expect(res.neurologica).toEqual({ codici: [], note: "" });
+  });
+});
+
+describe("PatologieSchema", () => {
+  it("accetta un elenco di codici validi", () => {
+    expect(PatologieSchema.safeParse(["C0101", "C0403", "C1902"]).success).toBe(true);
+  });
+
+  it("accetta un elenco vuoto", () => {
+    expect(PatologieSchema.safeParse([]).success).toBe(true);
+  });
+
+  it("rifiuta un codice sconosciuto", () => {
+    expect(PatologieSchema.safeParse(["C9999"]).success).toBe(false);
   });
 });
 

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { CATEGORIA_IDS, CODICI_PER_CATEGORIA } from "@/lib/sintomi";
+import { CODICI_PATOLOGIE } from "@/lib/patologie";
 
 // --- Sotto-schemi delle sezioni a righe ripetute ---
 
@@ -66,6 +67,24 @@ export const SintomiSchema = z
   });
 export type Sintomi = z.infer<typeof SintomiSchema>;
 
+// --- Patologia prevalente: elenco di codici della tassonomia (vedi patologie.ts) ---
+
+export const PatologieSchema = z
+  .array(z.string().max(10))
+  .max(50)
+  .superRefine((arr, ctx) => {
+    arr.forEach((codice, i) => {
+      if (!CODICI_PATOLOGIE.has(codice)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Codice patologia non valido: ${codice}`,
+          path: [i],
+        });
+      }
+    });
+  });
+export type Patologie = z.infer<typeof PatologieSchema>;
+
 // --- Contenuto della scheda (tutti i campi editabili) ---
 
 const contentShape = {
@@ -90,6 +109,7 @@ const contentShape = {
   respiro: z.string().max(500),
   circolo: z.string().max(500),
   addome: z.string().max(500),
+  patologie: PatologieSchema,
   esito: z.string().max(1000),
 
   sintomi: SintomiSchema,

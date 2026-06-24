@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Paper from "@mui/material/Paper";
@@ -10,7 +11,7 @@ import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import { emptyVoceDiario } from "@/lib/scheda";
 import type { VoceDiario } from "@/lib/schemas/scheda";
 
-export default function DiarioSection({
+function DiarioSection({
   value,
   onChange,
 }: {
@@ -63,3 +64,5 @@ export default function DiarioSection({
     </Box>
   );
 }
+
+export default memo(DiarioSection);

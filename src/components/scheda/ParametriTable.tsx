@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Table from "@mui/material/Table";
@@ -19,7 +20,7 @@ import type { ParametroVitale } from "@/lib/schemas/scheda";
 
 type Campo = (typeof PARAMETRI_COLONNE)[number]["campo"];
 
-export default function ParametriTable({
+function ParametriTable({
   value,
   onChange,
 }: {
@@ -86,3 +87,5 @@ export default function ParametriTable({
     </Box>
   );
 }
+
+export default memo(ParametriTable);

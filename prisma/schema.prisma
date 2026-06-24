@@ -45,6 +45,9 @@ model Scheda {
   addome    String @default("")
   esito     String @default("")
 
+  // Patologia prevalente: elenco di codici della tassonomia (vedi src/lib/patologie.ts)
+  patologie Json @default("[]")
+
   // Sintomi (SAMPLE): { [categoriaId]: { codici: string[], note?: string } }
   sintomi Json @default("{}")
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import Box from "@mui/material/Box";
 import Paper from "@mui/material/Paper";
 import Typography from "@mui/material/Typography";
@@ -12,7 +13,7 @@ import type { CategoriaSelezione, Sintomi } from "@/lib/schemas/scheda";
 
 const EMPTY_SEL: CategoriaSelezione = { codici: [], note: "" };
 
-export default function SintomiSection({
+function SintomiSection({
   value,
   onChange,
 }: {
@@ -78,3 +79,5 @@ export default function SintomiSection({
     </Box>
   );
 }
+
+export default memo(SintomiSection);

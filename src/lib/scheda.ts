@@ -2,10 +2,12 @@ import { z } from "zod";
 import type { SchedaStatus } from "@prisma/client";
 import {
   ParametroVitaleSchema,
+  PatologieSchema,
   SintomiSchema,
   TerapiaSomministrataSchema,
   VoceDiarioSchema,
   type ParametroVitale,
+  type Patologie,
   type Sintomi,
   type TerapiaSomministrata,
   type VoceDiario,
@@ -32,6 +34,7 @@ export interface SchedaContent {
   respiro: string;
   circolo: string;
   addome: string;
+  patologie: Patologie;
   esito: string;
   sintomi: Sintomi;
   parametri: ParametroVitale[];
@@ -81,10 +84,12 @@ const parametriArray = z.array(ParametroVitaleSchema).catch([]);
 const terapieArray = z.array(TerapiaSomministrataSchema).catch([]);
 const diarioArray = z.array(VoceDiarioSchema).catch([]);
 const sintomiSafe = SintomiSchema.catch({});
+const patologieSafe = PatologieSchema.catch([]);
 
 // Riga generica restituita da Prisma (con Json e Date). Normalizziamo a SchedaContent.
 interface SchedaRowLike {
   sintomi: unknown;
+  patologie: unknown;
   parametri: unknown;
   terapieSomministrate: unknown;
   diario: unknown;
@@ -107,6 +112,7 @@ interface SchedaRowLike {
   addome: string;
   esito: string;
   anamnesi: string;
+  // NB: patologie è Json (unknown), gestito sopra.
   terapiaDomiciliare: string;
   negaTerapiaDomiciliare: boolean;
   allergie: string;
@@ -137,6 +143,7 @@ export function toContent(row: SchedaRowLike): SchedaContent {
     respiro: row.respiro,
     circolo: row.circolo,
     addome: row.addome,
+    patologie: patologieSafe.parse(row.patologie),
     esito: row.esito,
     sintomi: sintomiSafe.parse(row.sintomi),
     parametri: parametriArray.parse(row.parametri),

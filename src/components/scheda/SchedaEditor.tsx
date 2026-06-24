@@ -1,14 +1,15 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
-import TextField from "@mui/material/TextField";
+import TextField, { type TextFieldProps } from "@mui/material/TextField";
 import FormControlLabel from "@mui/material/FormControlLabel";
 import Checkbox from "@mui/material/Checkbox";
 import MenuItem from "@mui/material/MenuItem";
+import Chip from "@mui/material/Chip";
 import Dialog from "@mui/material/Dialog";
 import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
@@ -19,17 +20,50 @@ import PrintIcon from "@mui/icons-material/Print";
 import Section from "@/components/scheda/Section";
 import SaveIndicator, { type SaveStatus } from "@/components/scheda/SaveIndicator";
 import SintomiSection from "@/components/scheda/SintomiSection";
+import PatologieSelect from "@/components/scheda/PatologieSelect";
 import ParametriTable from "@/components/scheda/ParametriTable";
 import TerapieSection from "@/components/scheda/TerapieSection";
 import DiarioSection from "@/components/scheda/DiarioSection";
 import { useUpdateScheda } from "@/hooks/useSchede";
 import { useToast } from "@/context/ToastContext";
 import type { SchedaContent, SchedaDTO } from "@/lib/scheda";
+import type {
+  ParametroVitale,
+  Sintomi,
+  TerapiaSomministrata,
+  VoceDiario,
+} from "@/lib/schemas/scheda";
 
 const AUTOSAVE_DELAY_MS = 1000;
 
 const SESSO_OPTIONS = ["M", "F", "Altro"];
 const TRIAGE_OPTIONS = ["Rosso", "Arancione", "Azzurro", "Verde", "Bianco"];
+const GRUPPO_OPTIONS = ["0+", "0-", "A+", "A-", "B+", "B-", "AB+", "AB-", "Sconosciuto"];
+const COSCIENZA_OPTIONS = [
+  "Vigile",
+  "Agitato/Disorientato",
+  "Reagisce Se Chiamato",
+  "Reagisce Al Dolore",
+  "Privo Di Conoscenza",
+];
+const RESPIRO_OPTIONS = ["Normale", "Tachipnea", "Dispnea", "Assente"];
+const ADDOME_OPTIONS = ["Trattabile", "Dolente", "Vomito", "Diarrea"];
+const CIRCOLO_OPTIONS = [
+  "Presente",
+  "Tachicardia",
+  "Bradicardia",
+  "Sudorazione",
+  "Pallore Cutaneo",
+  "Dolore Toracico",
+  "Assente",
+];
+const VIE_AEREE_OPTIONS = ["Libere", "Ostruite"];
+
+// I campi della valutazione ABCDE sono String nel DB: le scelte multiple
+// vengono serializzate con questo separatore (assente nelle label) e
+// ri-splittate per la UI.
+const MULTI_SEP = " · ";
+const splitMulti = (v: string) => (v ? v.split(MULTI_SEP) : []);
 
 // sx riutilizzabile per la griglia responsive dei campi.
 const gridSx = {
@@ -40,6 +74,140 @@ const gridSx = {
 
 // Label "shrink" forzata per gli input nativi date/time (altrimenti si sovrappone).
 const shrinkLabel = { inputLabel: { shrink: true } } as const;
+// sx hoistati a costanti: se fossero inline (nuovo oggetto a ogni render)
+// vanificherebbero il memo dei campi che li ricevono.
+const riferimentoSx = { minWidth: 280 } as const;
+const negaFieldSx = { mt: 1 } as const;
+const patologieBoxSx = { mt: 2 } as const;
+
+// Campo di testo memoizzato: si ri-renderizza solo quando cambia il SUO valore
+// (richiede onChange referenzialmente stabile — vedi le factory di setter).
+const MemoTextField = memo(function MemoTextField({
+  value,
+  onChange,
+  ...rest
+}: { value: string; onChange: (v: string) => void } & Omit<
+  TextFieldProps,
+  "value" | "onChange"
+>) {
+  return <TextField value={value} onChange={(e) => onChange(e.target.value)} {...rest} />;
+});
+
+// Select singola memoizzata (con voce vuota "—").
+const MemoSelectField = memo(function MemoSelectField({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  options: readonly string[];
+}) {
+  return (
+    <TextField
+      select
+      label={label}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      size="small"
+    >
+      <MenuItem value="">
+        <em>—</em>
+      </MenuItem>
+      {options.map((o) => (
+        <MenuItem key={o} value={o}>
+          {o}
+        </MenuItem>
+      ))}
+    </TextField>
+  );
+});
+
+// Sezione "Nega … / testo libero" memoizzata (terapia domiciliare, allergie).
+const MemoNegaField = memo(function MemoNegaField({
+  checkboxLabel,
+  nega,
+  onNegaChange,
+  value,
+  onValueChange,
+  minRows,
+}: {
+  checkboxLabel: string;
+  nega: boolean;
+  onNegaChange: (v: boolean) => void;
+  value: string;
+  onValueChange: (v: string) => void;
+  minRows: number;
+}) {
+  return (
+    <>
+      <FormControlLabel
+        control={<Checkbox checked={nega} onChange={(e) => onNegaChange(e.target.checked)} />}
+        label={checkboxLabel}
+      />
+      <TextField
+        value={value}
+        onChange={(e) => onValueChange(e.target.value)}
+        fullWidth
+        multiline
+        minRows={minRows}
+        disabled={nega}
+        sx={negaFieldSx}
+      />
+    </>
+  );
+});
+
+// Select a scelta multipla: ogni voce scelta appare come chip rimovibile.
+// Serializza/deserializza una stringa separata da MULTI_SEP.
+const MultiChipSelect = memo(function MultiChipSelect({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  options: readonly string[];
+  onChange: (next: string) => void;
+}) {
+  const selected = splitMulti(value);
+  return (
+    <TextField
+      select
+      label={label}
+      value={selected}
+      onChange={(e) => onChange((e.target.value as unknown as string[]).join(MULTI_SEP))}
+      size="small"
+      slotProps={{
+        select: {
+          multiple: true,
+          renderValue: (raw) => (
+            <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
+              {(raw as string[]).map((v) => (
+                <Chip
+                  key={v}
+                  label={v}
+                  size="small"
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onDelete={() => onChange(selected.filter((x) => x !== v).join(MULTI_SEP))}
+                />
+              ))}
+            </Box>
+          ),
+        },
+      }}
+    >
+      {options.map((o) => (
+        <MenuItem key={o} value={o}>
+          {o}
+        </MenuItem>
+      ))}
+    </TextField>
+  );
+});
 
 function toContent(dto: SchedaDTO): SchedaContent {
   const { id, status, createdAt, updatedAt, completedAt, ...content } = dto;
@@ -97,9 +265,57 @@ export default function SchedaEditor({ scheda }: { scheda: SchedaDTO }) {
     };
   }, [content]);
 
-  const setField = <K extends keyof SchedaContent>(key: K, val: SchedaContent[K]) => {
+  // Stabile (nessuna dipendenza): usa l'updater funzionale, così le callback
+  // derivate restano referenzialmente costanti e i sotto-componenti memoizzati
+  // non si ri-renderizzano a ogni battitura su altri campi.
+  const setField = useCallback(<K extends keyof SchedaContent>(key: K, val: SchedaContent[K]) => {
     setContent((prev) => ({ ...prev, [key]: val }));
-  };
+  }, []);
+
+  // Handler stabili per le sezioni "pesanti" (liste/checkbox/modale): senza
+  // questi, le closure inline vanificherebbero il memo dei componenti figli.
+  const setSintomi = useCallback((v: Sintomi) => setField("sintomi", v), [setField]);
+  const setPatologie = useCallback((v: string[]) => setField("patologie", v), [setField]);
+  const setParametri = useCallback((v: ParametroVitale[]) => setField("parametri", v), [setField]);
+  const setTerapie = useCallback(
+    (v: TerapiaSomministrata[]) => setField("terapieSomministrate", v),
+    [setField]
+  );
+  const setDiario = useCallback((v: VoceDiario[]) => setField("diario", v), [setField]);
+
+  // Factory di setter stabili per chiave: restituisce SEMPRE la stessa funzione
+  // per una data chiave, così ogni MemoTextField/MemoSelectField si ri-renderizza
+  // solo quando cambia il proprio valore (e non a ogni battitura su altri campi).
+  type StringKey = {
+    [K in keyof SchedaContent]: SchedaContent[K] extends string ? K : never;
+  }[keyof SchedaContent];
+  type BoolKey = {
+    [K in keyof SchedaContent]: SchedaContent[K] extends boolean ? K : never;
+  }[keyof SchedaContent];
+
+  const strSetter = useMemo(() => {
+    const cache = new Map<StringKey, (v: string) => void>();
+    return (key: StringKey) => {
+      let fn = cache.get(key);
+      if (!fn) {
+        fn = (v: string) => setContent((prev) => ({ ...prev, [key]: v }));
+        cache.set(key, fn);
+      }
+      return fn;
+    };
+  }, []);
+
+  const boolSetter = useMemo(() => {
+    const cache = new Map<BoolKey, (v: boolean) => void>();
+    return (key: BoolKey) => {
+      let fn = cache.get(key);
+      if (!fn) {
+        fn = (v: boolean) => setContent((prev) => ({ ...prev, [key]: v }));
+        cache.set(key, fn);
+      }
+      return fn;
+    };
+  }, []);
 
   const handleComplete = () => {
     setConfirmOpen(false);
@@ -133,12 +349,12 @@ export default function SchedaEditor({ scheda }: { scheda: SchedaDTO }) {
           mb: 3,
         }}
       >
-        <TextField
+        <MemoTextField
           label="Riferimento (iniziali / codice intervento)"
           value={content.riferimento}
-          onChange={(e) => setField("riferimento", e.target.value)}
+          onChange={strSetter("riferimento")}
           size="small"
-          sx={{ minWidth: 280 }}
+          sx={riferimentoSx}
         />
         <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
           <SaveIndicator status={saveStatus} />
@@ -161,99 +377,79 @@ export default function SchedaEditor({ scheda }: { scheda: SchedaDTO }) {
 
       <Section title="Dati paziente">
         <Box sx={gridSx}>
-          <TextField
+          <MemoTextField
             label="Data"
             type="date"
             value={content.data}
-            onChange={(e) => setField("data", e.target.value)}
+            onChange={strSetter("data")}
             size="small"
             slotProps={shrinkLabel}
           />
-          <TextField
+          <MemoTextField
             label="Ora arrivo"
             type="time"
             value={content.oraArrivo}
-            onChange={(e) => setField("oraArrivo", e.target.value)}
+            onChange={strSetter("oraArrivo")}
             size="small"
             slotProps={shrinkLabel}
           />
-          <TextField
+          <MemoTextField
             label="Ora inizio trattamento"
             type="time"
             value={content.oraInizioTrattamento}
-            onChange={(e) => setField("oraInizioTrattamento", e.target.value)}
+            onChange={strSetter("oraInizioTrattamento")}
             size="small"
             slotProps={shrinkLabel}
           />
-          <TextField
+          <MemoTextField
             label="Cognome"
             value={content.cognome}
-            onChange={(e) => setField("cognome", e.target.value)}
+            onChange={strSetter("cognome")}
             size="small"
           />
-          <TextField
+          <MemoTextField
             label="Nome"
             value={content.nome}
-            onChange={(e) => setField("nome", e.target.value)}
+            onChange={strSetter("nome")}
             size="small"
           />
-          <TextField
+          <MemoTextField
             label="Data di nascita"
             type="date"
             value={content.dataNascita}
-            onChange={(e) => setField("dataNascita", e.target.value)}
+            onChange={strSetter("dataNascita")}
             size="small"
             slotProps={shrinkLabel}
           />
-          <TextField
-            select
+          <MemoSelectField
             label="Sesso"
             value={content.sesso}
-            onChange={(e) => setField("sesso", e.target.value)}
-            size="small"
-          >
-            <MenuItem value="">
-              <em>—</em>
-            </MenuItem>
-            {SESSO_OPTIONS.map((o) => (
-              <MenuItem key={o} value={o}>
-                {o}
-              </MenuItem>
-            ))}
-          </TextField>
-          <TextField
+            onChange={strSetter("sesso")}
+            options={SESSO_OPTIONS}
+          />
+          <MemoTextField
             label="Telefono"
             type="tel"
             value={content.telefono}
-            onChange={(e) => setField("telefono", e.target.value)}
+            onChange={strSetter("telefono")}
             size="small"
           />
-          <TextField
+          <MemoSelectField
             label="Gruppo"
             value={content.gruppo}
-            onChange={(e) => setField("gruppo", e.target.value)}
-            size="small"
+            onChange={strSetter("gruppo")}
+            options={GRUPPO_OPTIONS}
           />
-          <TextField
-            select
+          <MemoSelectField
             label="Codice triage"
             value={content.codiceTriage}
-            onChange={(e) => setField("codiceTriage", e.target.value)}
-            size="small"
-          >
-            <MenuItem value="">
-              <em>—</em>
-            </MenuItem>
-            {TRIAGE_OPTIONS.map((o) => (
-              <MenuItem key={o} value={o}>
-                {o}
-              </MenuItem>
-            ))}
-          </TextField>
-          <TextField
+            onChange={strSetter("codiceTriage")}
+            options={TRIAGE_OPTIONS}
+          />
+          <MemoTextField
             label="Responsabile"
             value={content.responsabile}
-            onChange={(e) => setField("responsabile", e.target.value)}
+            onChange={strSetter("responsabile")}
             size="small"
           />
         </Box>
@@ -261,51 +457,54 @@ export default function SchedaEditor({ scheda }: { scheda: SchedaDTO }) {
 
       <Section title="Valutazione iniziale">
         <Box sx={gridSx}>
-          <TextField
+          <MultiChipSelect
             label="Coscienza"
             value={content.coscienza}
-            onChange={(e) => setField("coscienza", e.target.value)}
-            size="small"
+            options={COSCIENZA_OPTIONS}
+            onChange={strSetter("coscienza")}
           />
-          <TextField
+          <MemoSelectField
             label="Vie aeree"
             value={content.vieAeree}
-            onChange={(e) => setField("vieAeree", e.target.value)}
-            size="small"
+            onChange={strSetter("vieAeree")}
+            options={VIE_AEREE_OPTIONS}
           />
-          <TextField
+          <MultiChipSelect
             label="Respiro"
             value={content.respiro}
-            onChange={(e) => setField("respiro", e.target.value)}
-            size="small"
+            options={RESPIRO_OPTIONS}
+            onChange={strSetter("respiro")}
           />
-          <TextField
+          <MultiChipSelect
             label="Circolo"
             value={content.circolo}
-            onChange={(e) => setField("circolo", e.target.value)}
-            size="small"
+            options={CIRCOLO_OPTIONS}
+            onChange={strSetter("circolo")}
           />
-          <TextField
+          <MultiChipSelect
             label="Addome"
             value={content.addome}
-            onChange={(e) => setField("addome", e.target.value)}
-            size="small"
+            options={ADDOME_OPTIONS}
+            onChange={strSetter("addome")}
           />
+        </Box>
+        <Box sx={patologieBoxSx}>
+          <PatologieSelect value={content.patologie} onChange={setPatologie} />
         </Box>
       </Section>
 
       <Section title="Sintomi (SAMPLE)">
-        <SintomiSection value={content.sintomi} onChange={(v) => setField("sintomi", v)} />
+        <SintomiSection value={content.sintomi} onChange={setSintomi} />
       </Section>
 
       <Section title="Monitoraggio parametri">
-        <ParametriTable value={content.parametri} onChange={(v) => setField("parametri", v)} />
+        <ParametriTable value={content.parametri} onChange={setParametri} />
       </Section>
 
       <Section title="Anamnesi">
-        <TextField
+        <MemoTextField
           value={content.anamnesi}
-          onChange={(e) => setField("anamnesi", e.target.value)}
+          onChange={strSetter("anamnesi")}
           fullWidth
           multiline
           minRows={3}
@@ -313,62 +512,39 @@ export default function SchedaEditor({ scheda }: { scheda: SchedaDTO }) {
       </Section>
 
       <Section title="Terapia domiciliare">
-        <FormControlLabel
-          control={
-            <Checkbox
-              checked={content.negaTerapiaDomiciliare}
-              onChange={(e) => setField("negaTerapiaDomiciliare", e.target.checked)}
-            />
-          }
-          label="Nega terapia domiciliare"
-        />
-        <TextField
+        <MemoNegaField
+          checkboxLabel="Nega terapia domiciliare"
+          nega={content.negaTerapiaDomiciliare}
+          onNegaChange={boolSetter("negaTerapiaDomiciliare")}
           value={content.terapiaDomiciliare}
-          onChange={(e) => setField("terapiaDomiciliare", e.target.value)}
-          fullWidth
-          multiline
+          onValueChange={strSetter("terapiaDomiciliare")}
           minRows={2}
-          disabled={content.negaTerapiaDomiciliare}
-          sx={{ mt: 1 }}
         />
       </Section>
 
       <Section title="Allergie">
-        <FormControlLabel
-          control={
-            <Checkbox
-              checked={content.negaAllergie}
-              onChange={(e) => setField("negaAllergie", e.target.checked)}
-            />
-          }
-          label="Nega allergie"
-        />
-        <TextField
+        <MemoNegaField
+          checkboxLabel="Nega allergie"
+          nega={content.negaAllergie}
+          onNegaChange={boolSetter("negaAllergie")}
           value={content.allergie}
-          onChange={(e) => setField("allergie", e.target.value)}
-          fullWidth
-          multiline
+          onValueChange={strSetter("allergie")}
           minRows={2}
-          disabled={content.negaAllergie}
-          sx={{ mt: 1 }}
         />
       </Section>
 
       <Section title="Terapia somministrata">
-        <TerapieSection
-          value={content.terapieSomministrate}
-          onChange={(v) => setField("terapieSomministrate", v)}
-        />
+        <TerapieSection value={content.terapieSomministrate} onChange={setTerapie} />
       </Section>
 
       <Section title="Diario clinico">
-        <DiarioSection value={content.diario} onChange={(v) => setField("diario", v)} />
+        <DiarioSection value={content.diario} onChange={setDiario} />
       </Section>
 
       <Section title="Conclusioni e indicazioni">
-        <TextField
+        <MemoTextField
           value={content.conclusioni}
-          onChange={(e) => setField("conclusioni", e.target.value)}
+          onChange={strSetter("conclusioni")}
           fullWidth
           multiline
           minRows={3}
@@ -376,9 +552,9 @@ export default function SchedaEditor({ scheda }: { scheda: SchedaDTO }) {
       </Section>
 
       <Section title="Esito">
-        <TextField
+        <MemoTextField
           value={content.esito}
-          onChange={(e) => setField("esito", e.target.value)}
+          onChange={strSetter("esito")}
           fullWidth
           multiline
           minRows={2}

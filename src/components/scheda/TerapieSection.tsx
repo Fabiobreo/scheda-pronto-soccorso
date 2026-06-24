@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Paper from "@mui/material/Paper";
@@ -10,7 +11,7 @@ import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import { emptyTerapia } from "@/lib/scheda";
 import type { TerapiaSomministrata } from "@/lib/schemas/scheda";
 
-export default function TerapieSection({
+function TerapieSection({
   value,
   onChange,
 }: {
@@ -90,3 +91,5 @@ export default function TerapieSection({
     </Box>
   );
 }
+
+export default memo(TerapieSection);

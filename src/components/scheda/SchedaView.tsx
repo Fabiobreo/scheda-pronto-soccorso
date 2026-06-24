@@ -9,6 +9,7 @@ import TableContainer from "@mui/material/TableContainer";
 import Paper from "@mui/material/Paper";
 import Section from "@/components/scheda/Section";
 import { CATEGORIE_SINTOMI, PARAMETRI_COLONNE } from "@/lib/sintomi";
+import { LABEL_PER_CODICE } from "@/lib/patologie";
 import type { SchedaContent } from "@/lib/scheda";
 
 function TestoLibero({ value }: { value: string }) {
@@ -105,6 +106,20 @@ export default function SchedaView({ content }: { content: SchedaContent }) {
             ["Addome", content.addome],
           ]}
         />
+        <Box sx={{ mt: content.patologie.length > 0 ? 1.5 : 0 }}>
+          {content.patologie.length > 0 && (
+            <Box>
+              <Typography component="span" sx={{ fontWeight: 700 }}>
+                Patologia prevalente:
+              </Typography>{" "}
+              <Typography component="span">
+                {content.patologie
+                  .map((c) => `${c} ${LABEL_PER_CODICE[c] ?? "?"}`)
+                  .join("; ")}
+              </Typography>
+            </Box>
+          )}
+        </Box>
       </Section>
 
       <Section title="Sintomi (SAMPLE)">
