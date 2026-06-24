@@ -6,9 +6,13 @@ import Button from "@mui/material/Button";
 import Paper from "@mui/material/Paper";
 import TextField from "@mui/material/TextField";
 import IconButton from "@mui/material/IconButton";
+import InputAdornment from "@mui/material/InputAdornment";
+import Tooltip from "@mui/material/Tooltip";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
+import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import { emptyVoceDiario } from "@/lib/scheda";
+import { nowTime } from "@/lib/time";
 import type { VoceDiario } from "@/lib/schemas/scheda";
 
 function DiarioSection({
@@ -21,7 +25,8 @@ function DiarioSection({
   const update = (index: number, patch: Partial<VoceDiario>) => {
     onChange(value.map((row, i) => (i === index ? { ...row, ...patch } : row)));
   };
-  const addRow = () => onChange([...value, emptyVoceDiario()]);
+  // Nuova riga con l'ora corrente già compilata (caso d'uso più comune sul campo).
+  const addRow = () => onChange([...value, { ...emptyVoceDiario(), ora: nowTime() }]);
   const removeRow = (index: number) => onChange(value.filter((_, i) => i !== index));
 
   return (
@@ -33,7 +38,26 @@ function DiarioSection({
             value={row.ora}
             onChange={(e) => update(index, { ora: e.target.value })}
             size="small"
-            sx={{ width: 90, flexShrink: 0 }}
+            sx={{ width: 120, flexShrink: 0 }}
+            slotProps={{
+              input: {
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <Tooltip title="Imposta ora corrente">
+                      <IconButton
+                        size="small"
+                        edge="end"
+                        onClick={() => update(index, { ora: nowTime() })}
+                        aria-label="Imposta ora corrente"
+                        sx={{ displayPrint: "none" }}
+                      >
+                        <AccessTimeIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                  </InputAdornment>
+                ),
+              },
+            }}
           />
           <TextField
             label="Annotazione"

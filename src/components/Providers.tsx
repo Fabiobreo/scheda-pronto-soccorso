@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { AppRouterCacheProvider } from "@mui/material-nextjs/v15-appRouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { SessionProvider } from "next-auth/react";
 import { ThemeModeProvider } from "@/context/ThemeContext";
 import { ToastProvider } from "@/context/ToastContext";
 
@@ -18,11 +19,13 @@ export default function Providers({ children }: { children: React.ReactNode }) {
 
   return (
     <AppRouterCacheProvider options={{ key: "mui" }}>
-      <QueryClientProvider client={queryClient}>
-        <ThemeModeProvider>
-          <ToastProvider>{children}</ToastProvider>
-        </ThemeModeProvider>
-      </QueryClientProvider>
+      <SessionProvider>
+        <QueryClientProvider client={queryClient}>
+          <ThemeModeProvider>
+            <ToastProvider>{children}</ToastProvider>
+          </ThemeModeProvider>
+        </QueryClientProvider>
+      </SessionProvider>
     </AppRouterCacheProvider>
   );
 }

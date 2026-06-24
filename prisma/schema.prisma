@@ -17,6 +17,57 @@ enum SchedaStatus {
   COMPLETED
 }
 
+// Ruoli gerarchici: NURSE < SUPERVISOR < ADMIN. Il confronto gerarchico è in
+// src/lib/roles.ts (un valore numerico per livello).
+enum Role {
+  NURSE
+  SUPERVISOR
+  ADMIN
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  COMPLETE
+  DELETE
+  RESTORE
+  PURGE
+}
+
+// Log immutabile delle azioni (append-only): nessuna route lo aggiorna o cancella.
+// In sanità serve sapere chi ha fatto cosa e quando.
+model AuditLog {
+  id       String      @id @default(cuid())
+  entity   String // "Scheda" | "User"
+  entityId String
+  action   AuditAction
+  userId   String? // attore; null per azioni di sistema
+  meta     Json? // dettaglio opzionale (es. campi modificati)
+  at       DateTime    @default(now())
+
+  @@index([entity, entityId])
+  @@index([userId, at])
+}
+
+// Utente applicativo. Autenticazione a credenziali (email + password con hash
+// bcrypt): sessione JWT, quindi non servono le tabelle Account/Session del
+// PrismaAdapter (necessarie solo per OAuth o sessioni su DB).
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String   @default("")
+  passwordHash String
+  role         Role     @default(NURSE)
+  disabled     Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relazioni di audit verso le schede (attore delle azioni).
+  schedeCreate    Scheda[] @relation("SchedaCreatedBy")
+  schedeCompletate Scheda[] @relation("SchedaCompletedBy")
+  schedeEliminate  Scheda[] @relation("SchedaDeletedBy")
+}
+
 model Scheda {
   id     String       @id @default(cuid())
   status SchedaStatus @default(DRAFT)
@@ -72,5 +123,19 @@ model Scheda {
   updatedAt   DateTime  @updatedAt
   completedAt DateTime?
 
+  // Soft-delete: un record clinico non si distrugge mai (default). La hard-delete
+  // resta riservata all'ADMIN dal cestino. Tutte le letture filtrano deletedAt: null.
+  deletedAt DateTime?
+
+  // Attori delle azioni (audit a livello di record). Nullable: schede preesistenti
+  // all'introduzione dell'auth non hanno un autore noto.
+  createdById   String?
+  createdBy     User?   @relation("SchedaCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  completedById String?
+  completedBy   User?   @relation("SchedaCompletedBy", fields: [completedById], references: [id], onDelete: SetNull)
+  deletedById   String?
+  deletedBy     User?   @relation("SchedaDeletedBy", fields: [deletedById], references: [id], onDelete: SetNull)
+
   @@index([status, updatedAt])
+  @@index([status, deletedAt, updatedAt])
 }

@@ -7,6 +7,7 @@ import Button from "@mui/material/Button";
 import Container from "@mui/material/Container";
 import Typography from "@mui/material/Typography";
 import PrintIcon from "@mui/icons-material/Print";
+import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import TopBar from "@/components/TopBar";
 import StatusChip from "@/components/scheda/StatusChip";
@@ -19,8 +20,13 @@ export const dynamic = "force-dynamic";
 
 export default async function SchedaPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const row = await db.scheda.findUnique({ where: { id } });
+  const row = await db.scheda.findFirst({
+    where: { id, deletedAt: null },
+    include: { completedBy: { select: { name: true, email: true } } },
+  });
   if (!row) notFound();
+
+  const completedByLabel = row.completedBy ? row.completedBy.name || row.completedBy.email : null;
 
   const content = toContent(row);
   const scheda: SchedaDTO = {
@@ -65,14 +71,22 @@ export default async function SchedaPage({ params }: { params: Promise<{ id: str
                   <Typography variant="body2" color="text.secondary">
                     Completata il{" "}
                     {format(new Date(scheda.completedAt), "d MMMM yyyy, HH:mm", { locale: it })}
+                    {completedByLabel ? ` da ${completedByLabel}` : ""}
                   </Typography>
                 )}
               </Box>
-              <Link href={`/schede/${scheda.id}/stampa`} target="_blank">
-                <Button variant="contained" startIcon={<PrintIcon />}>
-                  Stampa
-                </Button>
-              </Link>
+              <Box sx={{ display: "flex", gap: 1 }}>
+                <Link href={`/api/schede/${scheda.id}/pdf`} target="_blank">
+                  <Button variant="outlined" startIcon={<PictureAsPdfIcon />}>
+                    PDF
+                  </Button>
+                </Link>
+                <Link href={`/schede/${scheda.id}/stampa`} target="_blank">
+                  <Button variant="contained" startIcon={<PrintIcon />}>
+                    Stampa
+                  </Button>
+                </Link>
+              </Box>
             </Box>
             <SchedaView content={content} />
           </>

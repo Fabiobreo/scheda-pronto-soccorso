@@ -6,9 +6,13 @@ import Button from "@mui/material/Button";
 import Paper from "@mui/material/Paper";
 import TextField from "@mui/material/TextField";
 import IconButton from "@mui/material/IconButton";
+import InputAdornment from "@mui/material/InputAdornment";
+import Tooltip from "@mui/material/Tooltip";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
+import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import { emptyTerapia } from "@/lib/scheda";
+import { nowTime } from "@/lib/time";
 import type { TerapiaSomministrata } from "@/lib/schemas/scheda";
 
 function TerapieSection({
@@ -21,7 +25,7 @@ function TerapieSection({
   const update = (index: number, patch: Partial<TerapiaSomministrata>) => {
     onChange(value.map((row, i) => (i === index ? { ...row, ...patch } : row)));
   };
-  const addRow = () => onChange([...value, emptyTerapia()]);
+  const addRow = () => onChange([...value, { ...emptyTerapia(), ora: nowTime() }]);
   const removeRow = (index: number) => onChange(value.filter((_, i) => i !== index));
 
   return (
@@ -41,7 +45,26 @@ function TerapieSection({
               value={row.ora}
               onChange={(e) => update(index, { ora: e.target.value })}
               size="small"
-              sx={{ width: { sm: 90 } }}
+              sx={{ width: { sm: 120 } }}
+              slotProps={{
+                input: {
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <Tooltip title="Imposta ora corrente">
+                        <IconButton
+                          size="small"
+                          edge="end"
+                          onClick={() => update(index, { ora: nowTime() })}
+                          aria-label="Imposta ora corrente"
+                          sx={{ displayPrint: "none" }}
+                        >
+                          <AccessTimeIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    </InputAdornment>
+                  ),
+                },
+              }}
             />
             <TextField
               label="Farmaco"

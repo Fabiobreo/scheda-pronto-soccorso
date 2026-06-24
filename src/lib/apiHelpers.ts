@@ -1,15 +1,24 @@
 import { NextResponse } from "next/server";
 import { ZodError } from "zod";
 import { Prisma } from "@prisma/client";
+import type { Role } from "@prisma/client";
 import { getAuthContext } from "@/lib/apiAuth";
 import { getClientIp, rateLimit } from "@/lib/rateLimit";
+import { hasMinRole } from "@/lib/roles";
+import { logger } from "@/lib/logger";
 
-// Guard comune alle API: rate limit (best-effort) + autorizzazione (stub).
+interface GuardOptions {
+  // Ruolo minimo richiesto: se l'utente non lo raggiunge → 403.
+  minRole?: Role;
+}
+
+// Guard comune alle API: rate limit (best-effort) + autenticazione + ruolo minimo.
 // Ritorna una Response se la richiesta va bloccata, altrimenti null.
 export async function guard(
   req: Request,
   routeKey: string,
-  limit = 60
+  limit = 60,
+  options: GuardOptions = {}
 ): Promise<NextResponse | null> {
   const rl = rateLimit(`${routeKey}:${getClientIp(req)}`, limit);
   if (!rl.ok) {
@@ -23,6 +32,9 @@ export async function guard(
   const auth = await getAuthContext(req);
   if (!auth.authorized) {
     return NextResponse.json({ error: "Non autorizzato" }, { status: 401 });
+  }
+  if (options.minRole && !hasMinRole(auth.role, options.minRole)) {
+    return NextResponse.json({ error: "Permessi insufficienti" }, { status: 403 });
   }
 
   return null;
@@ -63,6 +75,6 @@ export function handleApiError(error: unknown): NextResponse {
       return NextResponse.json({ error: "Valore duplicato" }, { status: 409 });
     }
   }
-  console.error("Errore API non gestito:", error);
+  logger.error("Errore API non gestito", error);
   return NextResponse.json({ error: "Errore interno del server" }, { status: 500 });
 }

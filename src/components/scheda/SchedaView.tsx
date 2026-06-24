@@ -113,9 +113,7 @@ export default function SchedaView({ content }: { content: SchedaContent }) {
                 Patologia prevalente:
               </Typography>{" "}
               <Typography component="span">
-                {content.patologie
-                  .map((c) => `${c} ${LABEL_PER_CODICE[c] ?? "?"}`)
-                  .join("; ")}
+                {content.patologie.map((c) => `${c} ${LABEL_PER_CODICE[c] ?? "?"}`).join("; ")}
               </Typography>
             </Box>
           )}

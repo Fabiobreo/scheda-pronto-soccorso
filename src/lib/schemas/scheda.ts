@@ -135,6 +135,9 @@ export const SchedaUpdateSchema = z
   .object({
     ...contentShape,
     status: z.enum(["DRAFT", "COMPLETED"]),
+    // Token di concorrenza ottimistica: updatedAt conosciuto dal client. Se non
+    // coincide con quello sul DB, la scheda è stata modificata altrove → 409.
+    expectedUpdatedAt: z.string().datetime(),
   })
   .partial()
   .refine((data) => Object.keys(data).length > 0, {

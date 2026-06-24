@@ -69,6 +69,36 @@ export interface SchedaListItem {
   completedAt: string | null;
 }
 
+// --- Validazione di completamento ---
+//
+// Campi minimi richiesti per marcare una scheda come COMPLETED. È volutamente
+// centralizzata e usata sia dal client (per abilitare/spiegare il bottone) sia dal
+// server (422 se non soddisfatta). La lista va concordata col cliente: qui un set
+// clinicamente sensato e facile da estendere.
+
+// Ritorna le etichette dei requisiti NON soddisfatti (vuoto = completabile).
+export function campiMancantiPerCompletamento(c: SchedaContent): string[] {
+  const mancanti: string[] = [];
+
+  // Identificativo paziente: almeno cognome o riferimento.
+  if (!c.cognome.trim() && !c.riferimento.trim()) {
+    mancanti.push("Identificativo paziente (cognome o riferimento)");
+  }
+
+  // Valutazione iniziale: almeno una delle voci ABCDE valorizzata.
+  const valutazione = [c.coscienza, c.vieAeree, c.respiro, c.circolo, c.addome];
+  if (valutazione.every((v) => !v.trim())) {
+    mancanti.push("Valutazione iniziale (almeno un campo)");
+  }
+
+  // Esito del trattamento.
+  if (!c.esito.trim()) {
+    mancanti.push("Esito");
+  }
+
+  return mancanti;
+}
+
 // Etichetta della scheda per la lista: "Cognome Nome" se presenti, altrimenti
 // il riferimento, altrimenti un placeholder.
 export function etichettaScheda(s: { cognome: string; nome: string; riferimento: string }): string {

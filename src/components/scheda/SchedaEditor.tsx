@@ -17,6 +17,7 @@ import DialogContentText from "@mui/material/DialogContentText";
 import DialogTitle from "@mui/material/DialogTitle";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import PrintIcon from "@mui/icons-material/Print";
+import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
 import Section from "@/components/scheda/Section";
 import SaveIndicator, { type SaveStatus } from "@/components/scheda/SaveIndicator";
 import SintomiSection from "@/components/scheda/SintomiSection";
@@ -26,7 +27,7 @@ import TerapieSection from "@/components/scheda/TerapieSection";
 import DiarioSection from "@/components/scheda/DiarioSection";
 import { useUpdateScheda } from "@/hooks/useSchede";
 import { useToast } from "@/context/ToastContext";
-import type { SchedaContent, SchedaDTO } from "@/lib/scheda";
+import { campiMancantiPerCompletamento, type SchedaContent, type SchedaDTO } from "@/lib/scheda";
 import type {
   ParametroVitale,
   Sintomi,
@@ -86,10 +87,7 @@ const MemoTextField = memo(function MemoTextField({
   value,
   onChange,
   ...rest
-}: { value: string; onChange: (v: string) => void } & Omit<
-  TextFieldProps,
-  "value" | "onChange"
->) {
+}: { value: string; onChange: (v: string) => void } & Omit<TextFieldProps, "value" | "onChange">) {
   return <TextField value={value} onChange={(e) => onChange(e.target.value)} {...rest} />;
 });
 
@@ -230,6 +228,9 @@ export default function SchedaEditor({ scheda }: { scheda: SchedaDTO }) {
 
   const lastSavedRef = useRef<string>(JSON.stringify(toContent(scheda)));
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Token di concorrenza ottimistica: l'updatedAt conosciuto. Aggiornato ad ogni
+  // salvataggio riuscito con il valore esatto restituito dal server.
+  const expectedUpdatedAtRef = useRef<string>(scheda.updatedAt);
   // Riferimenti stabili alle dipendenze usate dentro l'effetto di autosave,
   // così l'effetto dipende solo da `content` (useMutation cambia ogni render).
   const mutateRef = useRef(update.mutate);
@@ -248,22 +249,39 @@ export default function SchedaEditor({ scheda }: { scheda: SchedaDTO }) {
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => {
       setSaveStatus("saving");
-      mutateRef.current(content, {
-        onSuccess: () => {
-          lastSavedRef.current = serialized;
-          setSaveStatus("saved");
-        },
-        onError: (e: Error) => {
-          setSaveStatus("error");
-          toastRef.current(e.message, "error");
-        },
-      });
+      mutateRef.current(
+        { ...content, expectedUpdatedAt: expectedUpdatedAtRef.current },
+        {
+          onSuccess: (res: { updatedAt: string }) => {
+            lastSavedRef.current = serialized;
+            expectedUpdatedAtRef.current = res.updatedAt;
+            setSaveStatus("saved");
+          },
+          onError: (e: Error) => {
+            setSaveStatus("error");
+            toastRef.current(e.message, "error");
+          },
+        }
+      );
     }, AUTOSAVE_DELAY_MS);
 
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
   }, [content]);
+
+  // Avvisa prima di chiudere/ricaricare la pagina se ci sono modifiche non ancora
+  // salvate (il debounce di 1s potrebbe non aver fatto in tempo a persistere).
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (saveStatus === "pending" || saveStatus === "saving") {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [saveStatus]);
 
   // Stabile (nessuna dipendenza): usa l'updater funzionale, così le callback
   // derivate restano referenzialmente costanti e i sotto-componenti memoizzati
@@ -293,39 +311,45 @@ export default function SchedaEditor({ scheda }: { scheda: SchedaDTO }) {
     [K in keyof SchedaContent]: SchedaContent[K] extends boolean ? K : never;
   }[keyof SchedaContent];
 
-  const strSetter = useMemo(() => {
-    const cache = new Map<StringKey, (v: string) => void>();
-    return (key: StringKey) => {
-      let fn = cache.get(key);
-      if (!fn) {
-        fn = (v: string) => setContent((prev) => ({ ...prev, [key]: v }));
-        cache.set(key, fn);
+  // Tutti i setter per-chiave sono costruiti UNA volta dentro questo memo (durante il
+  // render, non in una closure differita): così ogni MemoTextField/MemoSelectField
+  // riceve un onChange referenzialmente stabile e si ri-renderizza solo quando cambia
+  // il proprio valore. Le chiavi (e il loro tipo string/boolean) sono derivate dal
+  // contenuto iniziale: niente elenco da tenere allineato a mano.
+  const { strSetters, boolSetters } = useMemo(() => {
+    const strSetters = {} as Record<StringKey, (v: string) => void>;
+    const boolSetters = {} as Record<BoolKey, (v: boolean) => void>;
+    const initial = toContent(scheda);
+    for (const key of Object.keys(initial) as (keyof SchedaContent)[]) {
+      const val = initial[key];
+      if (typeof val === "string") {
+        const k = key as StringKey;
+        strSetters[k] = (v: string) => setContent((prev) => ({ ...prev, [k]: v }));
+      } else if (typeof val === "boolean") {
+        const k = key as BoolKey;
+        boolSetters[k] = (v: boolean) => setContent((prev) => ({ ...prev, [k]: v }));
       }
-      return fn;
-    };
-  }, []);
+    }
+    return { strSetters, boolSetters };
+  }, [scheda]);
 
-  const boolSetter = useMemo(() => {
-    const cache = new Map<BoolKey, (v: boolean) => void>();
-    return (key: BoolKey) => {
-      let fn = cache.get(key);
-      if (!fn) {
-        fn = (v: boolean) => setContent((prev) => ({ ...prev, [key]: v }));
-        cache.set(key, fn);
-      }
-      return fn;
-    };
-  }, []);
+  const strSetter = useCallback((key: StringKey) => strSetters[key], [strSetters]);
+  const boolSetter = useCallback((key: BoolKey) => boolSetters[key], [boolSetters]);
+
+  // Requisiti minimi non ancora soddisfatti per il completamento (stessa logica del
+  // server, che rifiuta con 422 in caso di violazione).
+  const campiMancanti = campiMancantiPerCompletamento(content);
 
   const handleComplete = () => {
     setConfirmOpen(false);
     if (timerRef.current) clearTimeout(timerRef.current);
     setSaveStatus("saving");
     mutateRef.current(
-      { ...content, status: "COMPLETED" },
+      { ...content, status: "COMPLETED", expectedUpdatedAt: expectedUpdatedAtRef.current },
       {
-        onSuccess: () => {
+        onSuccess: (res: { updatedAt: string }) => {
           lastSavedRef.current = JSON.stringify(content);
+          expectedUpdatedAtRef.current = res.updatedAt;
           showToast("Scheda completata", "success");
           router.refresh();
         },
@@ -358,6 +382,11 @@ export default function SchedaEditor({ scheda }: { scheda: SchedaDTO }) {
         />
         <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
           <SaveIndicator status={saveStatus} />
+          <Link href={`/api/schede/${scheda.id}/pdf`} target="_blank">
+            <Button variant="outlined" startIcon={<PictureAsPdfIcon />}>
+              PDF
+            </Button>
+          </Link>
           <Link href={`/schede/${scheda.id}/stampa`} target="_blank">
             <Button variant="outlined" startIcon={<PrintIcon />}>
               Stampa
@@ -564,14 +593,32 @@ export default function SchedaEditor({ scheda }: { scheda: SchedaDTO }) {
       <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)}>
         <DialogTitle>Completare la scheda?</DialogTitle>
         <DialogContent>
-          <DialogContentText>
-            Una volta completata, la scheda diventa di sola lettura: potrai visualizzarla e
-            stamparla, ma non modificarla.
-          </DialogContentText>
+          {campiMancanti.length > 0 ? (
+            <>
+              <DialogContentText sx={{ mb: 1 }}>
+                Per completare la scheda mancano questi dati obbligatori:
+              </DialogContentText>
+              <Box component="ul" sx={{ m: 0, pl: 3, color: "error.main" }}>
+                {campiMancanti.map((campo) => (
+                  <li key={campo}>{campo}</li>
+                ))}
+              </Box>
+            </>
+          ) : (
+            <DialogContentText>
+              Una volta completata, la scheda diventa di sola lettura: potrai visualizzarla e
+              stamparla, ma non modificarla.
+            </DialogContentText>
+          )}
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setConfirmOpen(false)}>Annulla</Button>
-          <Button color="success" variant="contained" onClick={handleComplete}>
+          <Button
+            color="success"
+            variant="contained"
+            onClick={handleComplete}
+            disabled={campiMancanti.length > 0}
+          >
             Completa
           </Button>
         </DialogActions>

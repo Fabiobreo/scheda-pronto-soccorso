@@ -1,17 +1,22 @@
-// Stub di autenticazione.
+// Punto unico in cui le API route verificano l'autorizzazione.
 //
-// L'app parte PUBBLICA: nessuna auth. Questo helper centralizza il punto in cui
-// le API route verificano l'autorizzazione, così quando aggiungeremo Auth.js v5
-// (Google OAuth + PrismaAdapter, ruoli gerarchici) basterà cambiare QUI senza
-// toccare le route. Per ora ritorna sempre "autorizzato".
+// Legge la sessione Auth.js (JWT) e ritorna il contesto utente. Le route non
+// cambiano: passano da `guard()` (apiHelpers.ts) che a sua volta chiama qui.
+
+import type { Role } from "@prisma/client";
+import { auth } from "@/lib/auth";
 
 export interface AuthContext {
   authorized: boolean;
   userId: string | null;
-  role: string | null;
+  role: Role | null;
 }
 
-// `_req` non è ancora usato ma definisce la firma futura (lettura sessione/cookie).
+// `_req` non è usato: Auth.js legge i cookie dalla request corrente via headers().
 export async function getAuthContext(_req: Request): Promise<AuthContext> {
-  return { authorized: true, userId: null, role: null };
+  const session = await auth();
+  if (!session?.user) {
+    return { authorized: false, userId: null, role: null };
+  }
+  return { authorized: true, userId: session.user.id, role: session.user.role };
 }

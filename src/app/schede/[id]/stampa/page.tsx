@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
 
 export default async function StampaPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const row = await db.scheda.findUnique({ where: { id } });
+  const row = await db.scheda.findFirst({ where: { id, deletedAt: null } });
   if (!row) notFound();
 
   const content = toContent(row);

@@ -28,6 +28,7 @@ npm run dev          # next dev (Turbopack)
 npm run build        # prisma generate && prisma migrate deploy && next build
 npm run db:migrate   # prisma migrate dev
 npm run db:generate  # prisma generate
+npm run db:seed      # crea/aggiorna il primo utente ADMIN (SEED_ADMIN_*)
 npm run db:studio    # prisma studio
 npm run lint         # eslint (next lint è stato rimosso in Next 16)
 npm run format       # prettier --write .
@@ -57,15 +58,31 @@ terapie somministrate, diario) e i sintomi selezionati come colonne **`Json`**. 
 scelta rende l'**autosave un singolo `PUT`** (nessun upsert di figli).
 
 - Stati: `DRAFT` → `COMPLETED`. Il `PUT` è accettato **solo se `DRAFT`**; su scheda
-  `COMPLETED` ritorna `409`. Passare a `COMPLETED` valorizza `completedAt`.
+  `COMPLETED` ritorna `409`. Passare a `COMPLETED` valorizza `completedAt`/`completedById`.
 - La tassonomia dei sintomi (categorie + voci) è una costante in `src/lib/sintomi.ts`,
   usata sia per renderizzare le checkbox sia per validare i codici salvati.
 
 ## Autenticazione
 
-App **pubblica** all'avvio. `src/lib/apiAuth.ts` è uno stub (`getAuthContext` → sempre
-autorizzato): è il punto unico dove innestare Auth.js v5 (Google OAuth + PrismaAdapter,
-ruoli gerarchici) senza riscrivere le route.
+**Auth.js v5** con **Credentials** (email + password, hash bcrypt) e sessione **JWT**.
+Ruoli gerarchici `NURSE < SUPERVISOR < ADMIN` (enum `Role`, confronto in `src/lib/roles.ts`).
+
+- Config edge-safe in `src/lib/auth.config.ts` (usata dal **proxy** `src/proxy.ts`, ex
+  "middleware", che protegge le pagine); config completa con il provider in `src/lib/auth.ts`.
+- Le **API** non passano dal proxy: si proteggono via `getAuthContext` (`src/lib/apiAuth.ts`,
+  legge la sessione reale) attraverso `guard(req, key, limit, { minRole })` → 401/403.
+- Primo admin via seed: `npm run db:seed` (`SEED_ADMIN_EMAIL`/`SEED_ADMIN_PASSWORD`).
+  Gestione utenti ADMIN in `/admin/utenti`. Env richiesta: `AUTH_SECRET`.
+
+## Audit e soft-delete
+
+- Ogni azione su `Scheda` è tracciata in `AuditLog` (append-only) via `recordAudit`
+  (`src/lib/audit.ts`), nella stessa transazione dell'operazione.
+- Le schede non si cancellano: **soft-delete** (`deletedAt` + `deletedById`). Tutte le
+  letture filtrano `deletedAt: null`. Cestino ADMIN in `/admin/cestino` (restore/purge).
+- Il completamento richiede i campi minimi di `campiMancantiPerCompletamento`
+  (`src/lib/scheda.ts`, condivisa client/server → 422). La `PUT` usa concorrenza
+  ottimistica via `expectedUpdatedAt` (409 se la scheda è cambiata altrove).
 
 ## Pattern per ogni nuova entità
 
