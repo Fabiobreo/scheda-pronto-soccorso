@@ -5,19 +5,62 @@ import Box from "@mui/material/Box";
 import Container from "@mui/material/Container";
 import Paper from "@mui/material/Paper";
 import Typography from "@mui/material/Typography";
+import { alpha } from "@mui/material/styles";
+import DescriptionIcon from "@mui/icons-material/Description";
+import EditNoteIcon from "@mui/icons-material/EditNote";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import type { SvgIconComponent } from "@mui/icons-material";
 import TopBar from "@/components/TopBar";
 import { auth } from "@/lib/auth";
 import { getDashboardStats, type ContatoreEtichetta, type GiornoConteggio } from "@/lib/stats";
 
 export const dynamic = "force-dynamic";
 
-function StatCard({ label, value, color }: { label: string; value: number; color?: string }) {
+function StatCard({
+  label,
+  value,
+  color = "primary.main",
+  icon: Icon,
+}: {
+  label: string;
+  value: number;
+  color?: string;
+  icon: SvgIconComponent;
+}) {
   return (
-    <Paper sx={{ p: 3, flex: 1, minWidth: 160 }}>
-      <Typography variant="h2" sx={{ fontSize: "2.5rem", color: color ?? "text.primary" }}>
-        {value}
-      </Typography>
-      <Typography color="text.secondary">{label}</Typography>
+    <Paper
+      sx={{
+        p: 3,
+        flex: 1,
+        minWidth: 180,
+        display: "flex",
+        alignItems: "center",
+        gap: 2,
+        transition: "transform 0.15s, box-shadow 0.15s",
+        "&:hover": { transform: "translateY(-2px)", boxShadow: 4 },
+      }}
+    >
+      <Box
+        sx={{
+          width: 52,
+          height: 52,
+          borderRadius: 2.5,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          color,
+          bgcolor: (theme) => alpha(theme.palette.text.primary, 0.04),
+          flexShrink: 0,
+        }}
+      >
+        <Icon sx={{ fontSize: 28, color }} />
+      </Box>
+      <Box>
+        <Typography variant="h2" sx={{ fontSize: "2.25rem", lineHeight: 1, color }}>
+          {value}
+        </Typography>
+        <Typography color="text.secondary">{label}</Typography>
+      </Box>
     </Paper>
   );
 }
@@ -36,12 +79,15 @@ function BarList({ items }: { items: ContatoreEtichetta[] }) {
               {item.count}
             </Typography>
           </Box>
-          <Box sx={{ height: 8, bgcolor: "action.hover", borderRadius: 1, overflow: "hidden" }}>
+          <Box sx={{ height: 10, bgcolor: "action.hover", borderRadius: 5, overflow: "hidden" }}>
             <Box
               sx={{
                 height: "100%",
                 width: `${(item.count / max) * 100}%`,
-                bgcolor: "primary.main",
+                borderRadius: 5,
+                background: (theme) =>
+                  `linear-gradient(90deg, ${theme.palette.primary.main}, ${theme.palette.primary.light})`,
+                transition: "width 0.4s ease",
               }}
             />
           </Box>
@@ -60,9 +106,12 @@ function PerGiornoChart({ data }: { data: GiornoConteggio[] }) {
           <Box
             sx={{
               height: `${(d.count / max) * 130}px`,
-              bgcolor: "primary.main",
-              borderRadius: "2px 2px 0 0",
+              background: (theme) =>
+                `linear-gradient(180deg, ${theme.palette.primary.light}, ${theme.palette.primary.main})`,
+              borderRadius: "4px 4px 0 0",
               minHeight: d.count > 0 ? 4 : 0,
+              transition: "height 0.4s ease, opacity 0.15s",
+              "&:hover": { opacity: 0.8 },
             }}
             title={`${d.count} schede`}
           />
@@ -90,9 +139,19 @@ export default async function DashboardPage() {
         </Typography>
 
         <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2, mb: 3 }}>
-          <StatCard label="Schede totali" value={stats.totale} />
-          <StatCard label="Bozze" value={stats.bozze} color="warning.main" />
-          <StatCard label="Completate" value={stats.completate} color="success.main" />
+          <StatCard label="Schede totali" value={stats.totale} icon={DescriptionIcon} />
+          <StatCard
+            label="Bozze"
+            value={stats.bozze}
+            color="warning.main"
+            icon={EditNoteIcon}
+          />
+          <StatCard
+            label="Completate"
+            value={stats.completate}
+            color="success.main"
+            icon={CheckCircleIcon}
+          />
         </Box>
 
         <Paper sx={{ p: 3, mb: 3 }}>

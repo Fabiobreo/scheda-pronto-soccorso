@@ -15,6 +15,7 @@ import SchedaEditor from "@/components/scheda/SchedaEditor";
 import SchedaView from "@/components/scheda/SchedaView";
 import { db } from "@/lib/db";
 import { etichettaScheda, toContent, type SchedaDTO } from "@/lib/scheda";
+import { schedaDetailSelect } from "@/lib/schedaQueries";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +23,7 @@ export default async function SchedaPage({ params }: { params: Promise<{ id: str
   const { id } = await params;
   const row = await db.scheda.findFirst({
     where: { id, deletedAt: null },
-    include: { completedBy: { select: { name: true, email: true } } },
+    select: schedaDetailSelect,
   });
   if (!row) notFound();
 
@@ -76,7 +77,7 @@ export default async function SchedaPage({ params }: { params: Promise<{ id: str
                 )}
               </Box>
               <Box sx={{ display: "flex", gap: 1 }}>
-                <Link href={`/api/schede/${scheda.id}/pdf`} target="_blank">
+                <Link href={`/api/schede/${scheda.id}/pdf`}>
                   <Button variant="outlined" startIcon={<PictureAsPdfIcon />}>
                     PDF
                   </Button>

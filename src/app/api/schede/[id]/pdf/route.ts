@@ -6,6 +6,8 @@ import { it } from "date-fns/locale";
 import { db } from "@/lib/db";
 import { etichettaScheda, toContent } from "@/lib/scheda";
 import { SchedaPdf, type SchedaPdfMeta } from "@/lib/pdf/SchedaPdf";
+import { schedaDetailSelect } from "@/lib/schedaQueries";
+import { recordAudit } from "@/lib/audit";
 import { ApiError, guard, handleApiError } from "@/lib/apiHelpers";
 
 // @react-pdf/renderer richiede il runtime Node (non edge).
@@ -20,16 +22,19 @@ function safeFilename(label: string): string {
 }
 
 export async function GET(req: Request, { params }: Params) {
-  const blocked = await guard(req, "scheda:pdf", 60);
-  if (blocked) return blocked;
+  const g = await guard(req, "scheda:pdf", 60);
+  if (!g.ok) return g.response;
 
   try {
     const { id } = await params;
+    const { auth } = g;
     const row = await db.scheda.findFirst({
       where: { id, deletedAt: null },
-      include: { completedBy: { select: { name: true, email: true } } },
+      select: schedaDetailSelect,
     });
     if (!row) throw new ApiError(404, "Scheda non trovata");
+
+    await recordAudit(db, { entity: "Scheda", entityId: id, action: "EXPORT", userId: auth.userId });
 
     const content = toContent(row);
     const etichetta = etichettaScheda(content);

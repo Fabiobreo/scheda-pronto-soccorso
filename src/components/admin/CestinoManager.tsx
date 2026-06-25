@@ -21,6 +21,7 @@ import DialogContentText from "@mui/material/DialogContentText";
 import DialogTitle from "@mui/material/DialogTitle";
 import RestoreIcon from "@mui/icons-material/Restore";
 import DeleteForeverIcon from "@mui/icons-material/DeleteForever";
+import DeleteSweepIcon from "@mui/icons-material/DeleteSweep";
 import StatusChip from "@/components/scheda/StatusChip";
 import { useToast } from "@/context/ToastContext";
 import { useRestoreScheda, usePurgeScheda, TRASH_KEY } from "@/hooks/useSchede";
@@ -75,7 +76,10 @@ export default function CestinoManager({ initialItems }: { initialItems: SchedaT
       </Typography>
 
       {items.length === 0 ? (
-        <Paper sx={{ p: 4, textAlign: "center" }}>
+        <Paper sx={{ p: 6, textAlign: "center" }}>
+          <Box sx={{ color: "text.disabled", mb: 1.5, "& svg": { fontSize: 64 } }}>
+            <DeleteSweepIcon />
+          </Box>
           <Typography color="text.secondary">Il cestino è vuoto.</Typography>
         </Paper>
       ) : (

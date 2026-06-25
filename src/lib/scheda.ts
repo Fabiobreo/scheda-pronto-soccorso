@@ -63,6 +63,7 @@ export interface SchedaListItem {
   riferimento: string;
   cognome: string;
   nome: string;
+  codiceTriage: string;
   sintomi: Sintomi;
   createdAt: string;
   updatedAt: string;

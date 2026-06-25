@@ -1,9 +1,11 @@
 import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
 import Typography from "@mui/material/Typography";
 import CircularProgress from "@mui/material/CircularProgress";
 import CloudDoneIcon from "@mui/icons-material/CloudDone";
 import CloudOffIcon from "@mui/icons-material/CloudOff";
 import EditIcon from "@mui/icons-material/Edit";
+import RefreshIcon from "@mui/icons-material/Refresh";
 
 export type SaveStatus = "idle" | "pending" | "saving" | "saved" | "error";
 
@@ -15,7 +17,13 @@ const CONFIG: Record<SaveStatus, { label: string; color: string }> = {
   error: { label: "Errore di salvataggio", color: "error.main" },
 };
 
-export default function SaveIndicator({ status }: { status: SaveStatus }) {
+export default function SaveIndicator({
+  status,
+  onRetry,
+}: {
+  status: SaveStatus;
+  onRetry?: () => void;
+}) {
   if (status === "idle") return null;
   const { label, color } = CONFIG[status];
 
@@ -28,6 +36,17 @@ export default function SaveIndicator({ status }: { status: SaveStatus }) {
       <Typography variant="caption" sx={{ color: "inherit" }}>
         {label}
       </Typography>
+      {status === "error" && onRetry && (
+        <Button
+          size="small"
+          color="error"
+          startIcon={<RefreshIcon fontSize="small" />}
+          onClick={onRetry}
+          sx={{ minWidth: 0, py: 0 }}
+        >
+          Riprova
+        </Button>
+      )}
     </Box>
   );
 }

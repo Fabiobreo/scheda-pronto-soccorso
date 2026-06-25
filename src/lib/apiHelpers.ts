@@ -2,42 +2,49 @@ import { NextResponse } from "next/server";
 import { ZodError } from "zod";
 import { Prisma } from "@prisma/client";
 import type { Role } from "@prisma/client";
-import { getAuthContext } from "@/lib/apiAuth";
+import { getAuthContext, type AuthContext } from "@/lib/apiAuth";
 import { getClientIp, rateLimit } from "@/lib/rateLimit";
 import { hasMinRole } from "@/lib/roles";
 import { logger } from "@/lib/logger";
 
 interface GuardOptions {
-  // Ruolo minimo richiesto: se l'utente non lo raggiunge → 403.
   minRole?: Role;
 }
 
+export type GuardResult =
+  | { ok: false; response: NextResponse }
+  | { ok: true; auth: AuthContext };
+
 // Guard comune alle API: rate limit (best-effort) + autenticazione + ruolo minimo.
-// Ritorna una Response se la richiesta va bloccata, altrimenti null.
+// Restituisce l'AuthContext già calcolato così le route non devono chiamare
+// getAuthContext() una seconda volta (evita due decodifiche JWT per richiesta).
 export async function guard(
   req: Request,
   routeKey: string,
   limit = 60,
   options: GuardOptions = {}
-): Promise<NextResponse | null> {
+): Promise<GuardResult> {
   const rl = rateLimit(`${routeKey}:${getClientIp(req)}`, limit);
   if (!rl.ok) {
     const retryAfter = Math.ceil((rl.resetAt - Date.now()) / 1000);
-    return NextResponse.json(
-      { error: "Troppe richieste, riprova più tardi" },
-      { status: 429, headers: { "Retry-After": String(Math.max(1, retryAfter)) } }
-    );
+    return {
+      ok: false,
+      response: NextResponse.json(
+        { error: "Troppe richieste, riprova più tardi" },
+        { status: 429, headers: { "Retry-After": String(Math.max(1, retryAfter)) } }
+      ),
+    };
   }
 
   const auth = await getAuthContext(req);
   if (!auth.authorized) {
-    return NextResponse.json({ error: "Non autorizzato" }, { status: 401 });
+    return { ok: false, response: NextResponse.json({ error: "Non autorizzato" }, { status: 401 }) };
   }
   if (options.minRole && !hasMinRole(auth.role, options.minRole)) {
-    return NextResponse.json({ error: "Permessi insufficienti" }, { status: 403 });
+    return { ok: false, response: NextResponse.json({ error: "Permessi insufficienti" }, { status: 403 }) };
   }
 
-  return null;
+  return { ok: true, auth };
 }
 
 // Legge e valida il body JSON; lancia per essere gestito da handleApiError.

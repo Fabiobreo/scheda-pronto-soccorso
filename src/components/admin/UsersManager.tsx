@@ -153,11 +153,16 @@ export default function UsersManager({
                 <TableCell>{u.email}</TableCell>
                 <TableCell>{ROLE_LABEL[u.role]}</TableCell>
                 <TableCell>
-                  {u.disabled ? (
-                    <Chip label="Disabilitato" size="small" color="default" />
-                  ) : (
-                    <Chip label="Attivo" size="small" color="success" variant="outlined" />
-                  )}
+                  <Box sx={{ display: "flex", gap: 0.5, flexWrap: "wrap" }}>
+                    {u.disabled ? (
+                      <Chip label="Disabilitato" size="small" color="default" />
+                    ) : (
+                      <Chip label="Attivo" size="small" color="success" variant="outlined" />
+                    )}
+                    {u.forcePasswordChange && (
+                      <Chip label="Cambio pwd richiesto" size="small" color="warning" variant="outlined" />
+                    )}
+                  </Box>
                 </TableCell>
                 <TableCell sx={{ color: "text.secondary", whiteSpace: "nowrap" }}>
                   {format(new Date(u.createdAt), "d MMM yyyy", { locale: it })}

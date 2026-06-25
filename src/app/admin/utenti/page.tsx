@@ -21,6 +21,7 @@ export default async function UtentiPage() {
       name: true,
       role: true,
       disabled: true,
+      forcePasswordChange: true,
       createdAt: true,
       updatedAt: true,
     },

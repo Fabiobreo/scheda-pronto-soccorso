@@ -32,6 +32,10 @@ enum AuditAction {
   DELETE
   RESTORE
   PURGE
+  EXPORT
+  USER_CREATE
+  USER_UPDATE
+  USER_DELETE
 }
 
 // Log immutabile delle azioni (append-only): nessuna route lo aggiorna o cancella.
@@ -59,6 +63,7 @@ model User {
   passwordHash String
   role         Role     @default(NURSE)
   disabled     Boolean  @default(false)
+  forcePasswordChange Boolean @default(false)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 

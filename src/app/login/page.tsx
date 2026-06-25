@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense, useState } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
 import Box from "@mui/material/Box";
@@ -12,13 +13,16 @@ import Typography from "@mui/material/Typography";
 import Alert from "@mui/material/Alert";
 import IconButton from "@mui/material/IconButton";
 import InputAdornment from "@mui/material/InputAdornment";
+import { alpha } from "@mui/material/styles";
 import Visibility from "@mui/icons-material/Visibility";
 import VisibilityOff from "@mui/icons-material/VisibilityOff";
+import LocalHospitalIcon from "@mui/icons-material/LocalHospital";
 
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("callbackUrl") || "/";
+  const raw = searchParams.get("callbackUrl") || "/";
+  const callbackUrl = raw.startsWith("/") && !raw.startsWith("//") ? raw : "/";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -42,12 +46,35 @@ function LoginForm() {
 
   return (
     <Paper sx={{ p: 4, width: "100%" }}>
-      <Typography variant="h1" sx={{ mb: 1, fontSize: "1.5rem" }}>
-        Accedi
-      </Typography>
-      <Typography color="text.secondary" sx={{ mb: 3 }}>
-        Schede Pronto Soccorso
-      </Typography>
+      <Box
+        sx={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          textAlign: "center",
+          mb: 3,
+        }}
+      >
+        <Box
+          sx={{
+            width: 56,
+            height: 56,
+            borderRadius: "50%",
+            bgcolor: "primary.main",
+            color: "primary.contrastText",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            mb: 2,
+          }}
+        >
+          <LocalHospitalIcon fontSize="large" />
+        </Box>
+        <Typography variant="h1" sx={{ fontSize: "1.5rem" }}>
+          Accedi
+        </Typography>
+        <Typography color="text.secondary">Schede Pronto Soccorso</Typography>
+      </Box>
 
       <Box
         component="form"
@@ -92,16 +119,33 @@ function LoginForm() {
           {pending ? "Accesso in corso…" : "Accedi"}
         </Button>
       </Box>
+
+      <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 3, textAlign: "center" }}>
+        <Link href="/privacy" style={{ color: "inherit" }}>
+          Informativa privacy
+        </Link>
+      </Typography>
     </Paper>
   );
 }
 
 export default function LoginPage() {
   return (
-    <Container maxWidth="xs" sx={{ minHeight: "100vh", display: "flex", alignItems: "center" }}>
-      <Suspense>
-        <LoginForm />
-      </Suspense>
-    </Container>
+    <Box
+      sx={{
+        minHeight: "100vh",
+        display: "flex",
+        alignItems: "center",
+        // Gradiente tenue di brand dietro la card.
+        background: (theme) =>
+          `radial-gradient(1200px 600px at 50% -10%, ${alpha(theme.palette.primary.main, 0.18)}, transparent 60%), ${theme.palette.background.default}`,
+      }}
+    >
+      <Container maxWidth="xs">
+        <Suspense>
+          <LoginForm />
+        </Suspense>
+      </Container>
+    </Box>
   );
 }

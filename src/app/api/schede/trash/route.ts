@@ -6,8 +6,8 @@ import { guard, handleApiError } from "@/lib/apiHelpers";
 // Lista delle schede nel cestino (soft-deleted). Solo ADMIN.
 // Nota: il segmento statico "trash" ha precedenza sul dinamico "[id]".
 export async function GET(req: Request) {
-  const blocked = await guard(req, "schede:trash", 60, { minRole: "ADMIN" });
-  if (blocked) return blocked;
+  const g = await guard(req, "schede:trash", 60, { minRole: "ADMIN" });
+  if (!g.ok) return g.response;
 
   try {
     const rows = await db.scheda.findMany({

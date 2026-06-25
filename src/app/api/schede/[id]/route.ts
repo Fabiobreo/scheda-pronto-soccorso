@@ -2,21 +2,21 @@ import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { SchedaUpdateSchema } from "@/lib/schemas/scheda";
-import { getAuthContext } from "@/lib/apiAuth";
 import { recordAudit } from "@/lib/audit";
 import { hasMinRole } from "@/lib/roles";
 import { campiMancantiPerCompletamento, toContent } from "@/lib/scheda";
+import { schedaDetailSelect } from "@/lib/schedaQueries";
 import { ApiError, guard, handleApiError, parseJsonBody } from "@/lib/apiHelpers";
 
 type Params = { params: Promise<{ id: string }> };
 
 export async function GET(req: Request, { params }: Params) {
-  const blocked = await guard(req, "scheda:get", 120);
-  if (blocked) return blocked;
+  const g = await guard(req, "scheda:get", 120);
+  if (!g.ok) return g.response;
 
   try {
     const { id } = await params;
-    const scheda = await db.scheda.findFirst({ where: { id, deletedAt: null } });
+    const scheda = await db.scheda.findFirst({ where: { id, deletedAt: null }, select: schedaDetailSelect });
     if (!scheda) throw new ApiError(404, "Scheda non trovata");
     return NextResponse.json(scheda);
   } catch (error) {
@@ -26,12 +26,12 @@ export async function GET(req: Request, { params }: Params) {
 
 export async function PUT(req: Request, { params }: Params) {
   // Limite più alto: l'autosave (debounced ~1s) può generare molte PUT al minuto.
-  const blocked = await guard(req, "scheda:update", 180);
-  if (blocked) return blocked;
+  const g = await guard(req, "scheda:update", 180);
+  if (!g.ok) return g.response;
 
   try {
     const { id } = await params;
-    const auth = await getAuthContext(req);
+    const { auth } = g;
     const body = await parseJsonBody(req);
     const parsed = SchedaUpdateSchema.parse(body);
 
@@ -99,12 +99,12 @@ export async function PUT(req: Request, { params }: Params) {
 }
 
 export async function DELETE(req: Request, { params }: Params) {
-  const blocked = await guard(req, "scheda:delete", 30);
-  if (blocked) return blocked;
+  const g = await guard(req, "scheda:delete", 30);
+  if (!g.ok) return g.response;
 
   try {
     const { id } = await params;
-    const auth = await getAuthContext(req);
+    const { auth } = g;
     // Hard-delete (purge) definitiva: solo ADMIN, dal cestino.
     const purge = new URL(req.url).searchParams.get("purge") === "1";
 
@@ -113,7 +113,8 @@ export async function DELETE(req: Request, { params }: Params) {
         throw new ApiError(403, "Solo un amministratore può eliminare definitivamente");
       }
       await db.$transaction(async (tx) => {
-        await tx.scheda.delete({ where: { id } });
+        const result = await tx.scheda.deleteMany({ where: { id, deletedAt: { not: null } } });
+        if (result.count === 0) throw new ApiError(404, "Scheda non trovata nel cestino");
         await recordAudit(tx, {
           entity: "Scheda",
           entityId: id,

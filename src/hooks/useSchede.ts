@@ -20,6 +20,9 @@ export function schedaParamsToSearch(params: SchedaListParams): string {
   const sp = new URLSearchParams();
   if (params.q) sp.set("q", params.q);
   if (params.status) sp.set("status", params.status);
+  if (params.triage) sp.set("triage", params.triage);
+  if (params.dataFrom) sp.set("dataFrom", params.dataFrom);
+  if (params.dataTo) sp.set("dataTo", params.dataTo);
   if (params.page !== 1) sp.set("page", String(params.page));
   if (params.pageSize !== 20) sp.set("pageSize", String(params.pageSize));
   if (params.sort !== "updatedAt") sp.set("sort", params.sort);

@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getAuthContext } from "@/lib/apiAuth";
 import { recordAudit } from "@/lib/audit";
 import { ApiError, guard, handleApiError } from "@/lib/apiHelpers";
 
@@ -8,12 +7,12 @@ type Params = { params: Promise<{ id: string }> };
 
 // Ripristina una scheda dal cestino (annulla il soft-delete). Solo ADMIN.
 export async function POST(req: Request, { params }: Params) {
-  const blocked = await guard(req, "scheda:restore", 30, { minRole: "ADMIN" });
-  if (blocked) return blocked;
+  const g = await guard(req, "scheda:restore", 30, { minRole: "ADMIN" });
+  if (!g.ok) return g.response;
 
   try {
     const { id } = await params;
-    const auth = await getAuthContext(req);
+    const { auth } = g;
 
     await db.$transaction(async (tx) => {
       const result = await tx.scheda.updateMany({

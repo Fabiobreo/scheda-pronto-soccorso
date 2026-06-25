@@ -21,8 +21,12 @@ import LogoutIcon from "@mui/icons-material/Logout";
 import PeopleIcon from "@mui/icons-material/People";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import DashboardIcon from "@mui/icons-material/Dashboard";
+import PrivacyTipIcon from "@mui/icons-material/PrivacyTip";
+import HistoryIcon from "@mui/icons-material/History";
+import LocalHospitalIcon from "@mui/icons-material/LocalHospital";
 import { useThemeMode, type ThemeMode } from "@/context/ThemeContext";
 import { ROLE_LABEL, hasMinRole } from "@/lib/roles";
+import { APP_NAME, STRUTTURA } from "@/lib/config";
 
 const NEXT_MODE: Record<ThemeMode, ThemeMode> = {
   light: "dark",
@@ -46,14 +50,48 @@ export default function TopBar() {
   return (
     <AppBar position="sticky" color="default" elevation={1} sx={{ displayPrint: "none" }}>
       <Toolbar>
-        <Typography
-          variant="h3"
+        <Box
           component={Link}
           href="/"
-          sx={{ flexGrow: 1, color: "text.primary", textDecoration: "none", fontWeight: 700 }}
+          sx={{
+            flexGrow: 1,
+            display: "flex",
+            alignItems: "center",
+            gap: 1.25,
+            color: "text.primary",
+            textDecoration: "none",
+            minWidth: 0,
+          }}
         >
-          Schede Pronto Soccorso
-        </Typography>
+          <Box
+            sx={{
+              width: 36,
+              height: 36,
+              borderRadius: 2,
+              bgcolor: "primary.main",
+              color: "primary.contrastText",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexShrink: 0,
+            }}
+          >
+            <LocalHospitalIcon fontSize="small" />
+          </Box>
+          <Box sx={{ minWidth: 0 }}>
+            <Typography variant="h3" sx={{ lineHeight: 1.1, fontWeight: 700 }} noWrap>
+              {APP_NAME}
+            </Typography>
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              sx={{ display: { xs: "none", sm: "block" }, lineHeight: 1.1 }}
+              noWrap
+            >
+              {STRUTTURA.nome}
+            </Typography>
+          </Box>
+        </Box>
         <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
           <Tooltip title={MODE_LABEL[mode]}>
             <IconButton
@@ -119,6 +157,21 @@ export default function TopBar() {
                     Cestino
                   </MenuItem>
                 )}
+                {isAdmin && (
+                  <MenuItem component={Link} href="/admin/audit" onClick={() => setAnchorEl(null)}>
+                    <ListItemIcon>
+                      <HistoryIcon fontSize="small" />
+                    </ListItemIcon>
+                    Registro accessi
+                  </MenuItem>
+                )}
+                <Divider />
+                <MenuItem component={Link} href="/privacy" onClick={() => setAnchorEl(null)}>
+                  <ListItemIcon>
+                    <PrivacyTipIcon fontSize="small" />
+                  </ListItemIcon>
+                  Informativa privacy
+                </MenuItem>
                 <MenuItem onClick={() => signOut({ callbackUrl: "/login" })}>
                   <ListItemIcon>
                     <LogoutIcon fontSize="small" />

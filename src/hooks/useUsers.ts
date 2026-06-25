@@ -12,6 +12,7 @@ export interface UserListItem {
   name: string;
   role: Role;
   disabled: boolean;
+  forcePasswordChange: boolean;
   createdAt: string;
   updatedAt: string;
 }

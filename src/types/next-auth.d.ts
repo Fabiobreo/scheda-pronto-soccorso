@@ -7,19 +7,20 @@ declare module "next-auth" {
     user: {
       id: string;
       role: Role;
+      forcePasswordChange: boolean;
     } & DefaultSession["user"];
   }
 
   interface User {
     role: Role;
+    forcePasswordChange?: boolean;
   }
 }
 
-// `next-auth/jwt` è solo un re-export di `@auth/core/jwt`: per far MERGE l'augmentazione
-// con l'interfaccia usata dai callback bisogna dichiarare il modulo originale.
 declare module "@auth/core/jwt" {
   interface JWT {
     id: string;
     role: Role;
+    forcePasswordChange?: boolean;
   }
 }

@@ -10,6 +10,7 @@ import FormControlLabel from "@mui/material/FormControlLabel";
 import Checkbox from "@mui/material/Checkbox";
 import MenuItem from "@mui/material/MenuItem";
 import Chip from "@mui/material/Chip";
+import Alert from "@mui/material/Alert";
 import Dialog from "@mui/material/Dialog";
 import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
@@ -20,6 +21,7 @@ import PrintIcon from "@mui/icons-material/Print";
 import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
 import Section from "@/components/scheda/Section";
 import SaveIndicator, { type SaveStatus } from "@/components/scheda/SaveIndicator";
+import TriageChip from "@/components/scheda/TriageChip";
 import SintomiSection from "@/components/scheda/SintomiSection";
 import PatologieSelect from "@/components/scheda/PatologieSelect";
 import ParametriTable from "@/components/scheda/ParametriTable";
@@ -225,6 +227,7 @@ export default function SchedaEditor({ scheda }: { scheda: SchedaDTO }) {
   const [content, setContent] = useState<SchedaContent>(() => toContent(scheda));
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [conflictOpen, setConflictOpen] = useState(false);
 
   const lastSavedRef = useRef<string>(JSON.stringify(toContent(scheda)));
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -259,7 +262,11 @@ export default function SchedaEditor({ scheda }: { scheda: SchedaDTO }) {
           },
           onError: (e: Error) => {
             setSaveStatus("error");
-            toastRef.current(e.message, "error");
+            if (e.message.includes("modificata altrove")) {
+              setConflictOpen(true);
+            } else {
+              toastRef.current(e.message, "error");
+            }
           },
         }
       );
@@ -270,17 +277,50 @@ export default function SchedaEditor({ scheda }: { scheda: SchedaDTO }) {
     };
   }, [content]);
 
-  // Avvisa prima di chiudere/ricaricare la pagina se ci sono modifiche non ancora
-  // salvate (il debounce di 1s potrebbe non aver fatto in tempo a persistere).
+  // Avvisa prima di chiudere/ricaricare se ci sono modifiche non salvate o se
+  // l'ultimo salvataggio è fallito (il debounce potrebbe non aver fatto in tempo).
   useEffect(() => {
     const handler = (e: BeforeUnloadEvent) => {
-      if (saveStatus === "pending" || saveStatus === "saving") {
+      if (saveStatus === "pending" || saveStatus === "saving" || saveStatus === "error") {
         e.preventDefault();
         e.returnValue = "";
       }
     };
     window.addEventListener("beforeunload", handler);
     return () => window.removeEventListener("beforeunload", handler);
+  }, [saveStatus]);
+
+  // Retry automatico dopo un errore di salvataggio: riprova dopo 5 secondi.
+  // Usa un ref per il contenuto da ritentare così evita di aggiungere `content`
+  // come dipendenza (causerebbe un loop con l'effetto di autosave).
+  const retryContentRef = useRef<typeof content | null>(null);
+  useEffect(() => {
+    if (saveStatus !== "error") {
+      retryContentRef.current = null;
+      return;
+    }
+    retryContentRef.current = content;
+    const t = setTimeout(() => {
+      const payload = retryContentRef.current;
+      if (!payload) return;
+      setSaveStatus("saving");
+      mutateRef.current(
+        { ...payload, expectedUpdatedAt: expectedUpdatedAtRef.current },
+        {
+          onSuccess: (res: { updatedAt: string }) => {
+            lastSavedRef.current = JSON.stringify(payload);
+            expectedUpdatedAtRef.current = res.updatedAt;
+            setSaveStatus("saved");
+          },
+          onError: (e: Error) => {
+            setSaveStatus("error");
+            toastRef.current(e.message, "error");
+          },
+        }
+      );
+    }, 5000);
+    return () => clearTimeout(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [saveStatus]);
 
   // Stabile (nessuna dipendenza): usa l'updater funzionale, così le callback
@@ -361,6 +401,28 @@ export default function SchedaEditor({ scheda }: { scheda: SchedaDTO }) {
     );
   };
 
+  // Riprova manuale dopo un errore di salvataggio (pulsante nel SaveIndicator).
+  const handleRetrySave = () => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    const serialized = JSON.stringify(content);
+    setSaveStatus("saving");
+    mutateRef.current(
+      { ...content, expectedUpdatedAt: expectedUpdatedAtRef.current },
+      {
+        onSuccess: (res: { updatedAt: string }) => {
+          lastSavedRef.current = serialized;
+          expectedUpdatedAtRef.current = res.updatedAt;
+          setSaveStatus("saved");
+        },
+        onError: (e: Error) => {
+          setSaveStatus("error");
+          if (e.message.includes("modificata altrove")) setConflictOpen(true);
+          else toastRef.current(e.message, "error");
+        },
+      }
+    );
+  };
+
   return (
     <Box>
       <Box
@@ -371,6 +433,12 @@ export default function SchedaEditor({ scheda }: { scheda: SchedaDTO }) {
           alignItems: "center",
           justifyContent: "space-between",
           mb: 3,
+          // Barra azioni sempre visibile durante lo scroll del form lungo.
+          position: "sticky",
+          top: 0,
+          zIndex: (theme) => theme.zIndex.appBar - 1,
+          bgcolor: "background.default",
+          py: 1.5,
         }}
       >
         <MemoTextField
@@ -381,8 +449,8 @@ export default function SchedaEditor({ scheda }: { scheda: SchedaDTO }) {
           sx={riferimentoSx}
         />
         <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-          <SaveIndicator status={saveStatus} />
-          <Link href={`/api/schede/${scheda.id}/pdf`} target="_blank">
+          <SaveIndicator status={saveStatus} onRetry={handleRetrySave} />
+          <Link href={`/api/schede/${scheda.id}/pdf`}>
             <Button variant="outlined" startIcon={<PictureAsPdfIcon />}>
               PDF
             </Button>
@@ -403,6 +471,12 @@ export default function SchedaEditor({ scheda }: { scheda: SchedaDTO }) {
           </Button>
         </Box>
       </Box>
+
+      {campiMancanti.length > 0 && (
+        <Alert severity="info" sx={{ mb: 3 }}>
+          Per completare la scheda mancano: {campiMancanti.join(", ")}.
+        </Alert>
+      )}
 
       <Section title="Dati paziente">
         <Box sx={gridSx}>
@@ -469,12 +543,15 @@ export default function SchedaEditor({ scheda }: { scheda: SchedaDTO }) {
             onChange={strSetter("gruppo")}
             options={GRUPPO_OPTIONS}
           />
-          <MemoSelectField
-            label="Codice triage"
-            value={content.codiceTriage}
-            onChange={strSetter("codiceTriage")}
-            options={TRIAGE_OPTIONS}
-          />
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
+            <MemoSelectField
+              label="Codice triage"
+              value={content.codiceTriage}
+              onChange={strSetter("codiceTriage")}
+              options={TRIAGE_OPTIONS}
+            />
+            {content.codiceTriage && <TriageChip value={content.codiceTriage} />}
+          </Box>
           <MemoTextField
             label="Responsabile"
             value={content.responsabile}
@@ -589,6 +666,21 @@ export default function SchedaEditor({ scheda }: { scheda: SchedaDTO }) {
           minRows={2}
         />
       </Section>
+
+      <Dialog open={conflictOpen}>
+        <DialogTitle>Scheda modificata da un altro utente</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            La scheda è stata modificata da un altro utente mentre lavoravi. Ricarica la pagina per
+            vedere i dati aggiornati. Le modifiche non salvate andranno perse.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button variant="contained" onClick={() => router.refresh()}>
+            Ricarica
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)}>
         <DialogTitle>Completare la scheda?</DialogTitle>

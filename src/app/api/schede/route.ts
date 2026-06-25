@@ -1,14 +1,13 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { SchedaCreateSchema } from "@/lib/schemas/scheda";
-import { getAuthContext } from "@/lib/apiAuth";
 import { recordAudit } from "@/lib/audit";
 import { listSchede, parseSchedaListParams } from "@/lib/schedaQueries";
 import { guard, handleApiError, parseJsonBody } from "@/lib/apiHelpers";
 
 export async function GET(req: Request) {
-  const blocked = await guard(req, "schede:list", 120);
-  if (blocked) return blocked;
+  const g = await guard(req, "schede:list", 120);
+  if (!g.ok) return g.response;
 
   try {
     const raw = Object.fromEntries(new URL(req.url).searchParams.entries());
@@ -21,13 +20,21 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const blocked = await guard(req, "schede:create", 30);
-  if (blocked) return blocked;
+  const g = await guard(req, "schede:create", 30);
+  if (!g.ok) return g.response;
 
   try {
-    const auth = await getAuthContext(req);
+    const { auth } = g;
     const body = await parseJsonBody(req);
-    const data = SchedaCreateSchema.parse(body);
+    const parsed = SchedaCreateSchema.parse(body);
+
+    // Prefill data/ora di arrivo con il momento corrente se non forniti dal client.
+    const now = new Date();
+    const data = {
+      data: now.toISOString().slice(0, 10), // yyyy-MM-dd
+      oraArrivo: now.toTimeString().slice(0, 5), // HH:mm
+      ...parsed,
+    };
 
     const scheda = await db.$transaction(async (tx) => {
       const created = await tx.scheda.create({
