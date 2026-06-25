@@ -34,8 +34,6 @@ import InboxIcon from "@mui/icons-material/Inbox";
 import SearchOffIcon from "@mui/icons-material/SearchOff";
 import ViewListIcon from "@mui/icons-material/ViewList";
 import ViewModuleIcon from "@mui/icons-material/ViewModule";
-import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
-import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
 import StatusChip from "@/components/scheda/StatusChip";
 import TriageChip from "@/components/scheda/TriageChip";
 import {
@@ -47,12 +45,7 @@ import {
 import { useToast } from "@/context/ToastContext";
 import { CATEGORIE_SINTOMI } from "@/lib/sintomi";
 import { etichettaScheda, type SchedaListItem } from "@/lib/scheda";
-import {
-  SCHEDA_SORT_FIELDS,
-  type SchedaListParams,
-  type SchedaListResult,
-  type SchedaSortField,
-} from "@/lib/schedaQueries";
+import type { SchedaListParams, SchedaListResult } from "@/lib/schedaQueries";
 
 // Riferimento da mostrare come riga secondaria: solo se presente e diverso
 // dall'etichetta principale (altrimenti sarebbe già visibile come titolo).
@@ -82,11 +75,6 @@ function rigaSecondaria(scheda: SchedaListItem): string {
 
 const SEARCH_DEBOUNCE_MS = 350;
 const TRIAGE_OPTIONS = ["Rosso", "Arancione", "Azzurro", "Verde", "Bianco"];
-const SORT_LABELS: Record<SchedaSortField, string> = {
-  updatedAt: "Aggiornata",
-  createdAt: "Creazione",
-  cognome: "Cognome",
-};
 
 type ViewMode = "list" | "grid";
 const VIEW_STORAGE_KEY = "schede-view";

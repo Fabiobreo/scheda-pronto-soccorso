@@ -13,6 +13,7 @@ import TopBar from "@/components/TopBar";
 import StatusChip from "@/components/scheda/StatusChip";
 import SchedaEditor from "@/components/scheda/SchedaEditor";
 import SchedaView from "@/components/scheda/SchedaView";
+import ShareButton from "@/components/scheda/ShareButton";
 import { db } from "@/lib/db";
 import { etichettaScheda, toContent, type SchedaDTO } from "@/lib/scheda";
 import { schedaDetailSelect } from "@/lib/schedaQueries";
@@ -82,11 +83,12 @@ export default async function SchedaPage({ params }: { params: Promise<{ id: str
                     PDF
                   </Button>
                 </Link>
-                <Link href={`/schede/${scheda.id}/stampa`} target="_blank">
+                <Link href={`/schede/${scheda.id}/stampa`}>
                   <Button variant="contained" startIcon={<PrintIcon />}>
                     Stampa
                   </Button>
                 </Link>
+                <ShareButton schedaId={scheda.id} etichetta={etichettaScheda(scheda)} />
               </Box>
             </Box>
             <SchedaView content={content} />

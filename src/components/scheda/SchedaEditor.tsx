@@ -22,6 +22,7 @@ import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
 import Section from "@/components/scheda/Section";
 import SaveIndicator, { type SaveStatus } from "@/components/scheda/SaveIndicator";
 import TriageChip from "@/components/scheda/TriageChip";
+import ShareButton from "@/components/scheda/ShareButton";
 import SintomiSection from "@/components/scheda/SintomiSection";
 import PatologieSelect from "@/components/scheda/PatologieSelect";
 import ParametriTable from "@/components/scheda/ParametriTable";
@@ -29,7 +30,12 @@ import TerapieSection from "@/components/scheda/TerapieSection";
 import DiarioSection from "@/components/scheda/DiarioSection";
 import { useUpdateScheda } from "@/hooks/useSchede";
 import { useToast } from "@/context/ToastContext";
-import { campiMancantiPerCompletamento, type SchedaContent, type SchedaDTO } from "@/lib/scheda";
+import {
+  campiMancantiPerCompletamento,
+  etichettaScheda,
+  type SchedaContent,
+  type SchedaDTO,
+} from "@/lib/scheda";
 import type {
   ParametroVitale,
   Sintomi,
@@ -455,11 +461,12 @@ export default function SchedaEditor({ scheda }: { scheda: SchedaDTO }) {
               PDF
             </Button>
           </Link>
-          <Link href={`/schede/${scheda.id}/stampa`} target="_blank">
+          <Link href={`/schede/${scheda.id}/stampa`}>
             <Button variant="outlined" startIcon={<PrintIcon />}>
               Stampa
             </Button>
           </Link>
+          <ShareButton schedaId={scheda.id} etichetta={etichettaScheda(content)} />
           <Button
             variant="contained"
             color="success"
