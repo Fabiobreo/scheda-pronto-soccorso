@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { signOut } from "next-auth/react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { signOut, useSession } from "next-auth/react";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Container from "@mui/material/Container";
@@ -9,11 +11,24 @@ import Paper from "@mui/material/Paper";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import Alert from "@mui/material/Alert";
+import IconButton from "@mui/material/IconButton";
+import InputAdornment from "@mui/material/InputAdornment";
 import LockResetIcon from "@mui/icons-material/LockReset";
+import Visibility from "@mui/icons-material/Visibility";
+import VisibilityOff from "@mui/icons-material/VisibilityOff";
+import { useToast } from "@/context/ToastContext";
 
 export default function CambiaPasswordPage() {
+  const router = useRouter();
+  const { data: session } = useSession();
+  const { showToast } = useToast();
+  // Cambio "forzato" (password temporanea impostata dall'admin) vs volontario.
+  const forced = session?.user?.forcePasswordChange ?? false;
+
+  const [currentPassword, setCurrentPassword] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [done, setDone] = useState(false);
@@ -23,7 +38,7 @@ export default function CambiaPasswordPage() {
     setError(null);
 
     if (password.length < 8) {
-      setError("La password deve avere almeno 8 caratteri.");
+      setError("La nuova password deve avere almeno 8 caratteri.");
       return;
     }
     if (password !== confirm) {
@@ -36,7 +51,7 @@ export default function CambiaPasswordPage() {
       const res = await fetch("/api/users/me/password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password }),
+        body: JSON.stringify({ currentPassword, password }),
       });
       if (!res.ok) {
         const body = (await res.json()) as { error?: string };
@@ -44,9 +59,16 @@ export default function CambiaPasswordPage() {
         return;
       }
       setDone(true);
-      // Il token JWT contiene ancora forcePasswordChange=true fino al prossimo login.
-      // Esegue il logout per forzare una nuova autenticazione con il token aggiornato.
-      setTimeout(() => signOut({ callbackUrl: "/login" }), 2000);
+      if (forced) {
+        // Il token JWT contiene ancora forcePasswordChange=true: logout per rigenerarlo.
+        setTimeout(() => signOut({ callbackUrl: "/login" }), 1500);
+      } else {
+        showToast("Password aggiornata", "success");
+        setTimeout(() => {
+          router.push("/");
+          router.refresh();
+        }, 1200);
+      }
     } catch {
       setError("Errore di connessione. Riprova.");
     } finally {
@@ -64,13 +86,15 @@ export default function CambiaPasswordPage() {
           </Typography>
         </Box>
         <Typography color="text.secondary" sx={{ mb: 3 }}>
-          Un amministratore ha impostato una password temporanea per il tuo account. Scegli una
-          nuova password prima di continuare.
+          {forced
+            ? "Un amministratore ha impostato una password temporanea per il tuo account. Scegline una nuova prima di continuare."
+            : "Aggiorna la password del tuo account."}
         </Typography>
 
         {done ? (
           <Alert severity="success">
-            Password aggiornata. Verrai reindirizzato al login…
+            Password aggiornata.{" "}
+            {forced ? "Verrai reindirizzato al login…" : "Reindirizzamento in corso…"}
           </Alert>
         ) : (
           <Box
@@ -80,17 +104,41 @@ export default function CambiaPasswordPage() {
           >
             {error && <Alert severity="error">{error}</Alert>}
             <TextField
-              label="Nuova password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              autoComplete="new-password"
+              label="Password attuale"
+              type={showPassword ? "text" : "password"}
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              autoComplete="current-password"
               required
               autoFocus
             />
             <TextField
-              label="Conferma password"
-              type="password"
+              label="Nuova password"
+              type={showPassword ? "text" : "password"}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="new-password"
+              required
+              slotProps={{
+                input: {
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        onClick={() => setShowPassword((s) => !s)}
+                        edge="end"
+                        aria-label={showPassword ? "Nascondi password" : "Mostra password"}
+                        tabIndex={-1}
+                      >
+                        {showPassword ? <VisibilityOff /> : <Visibility />}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                },
+              }}
+            />
+            <TextField
+              label="Conferma nuova password"
+              type={showPassword ? "text" : "password"}
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}
               autoComplete="new-password"
@@ -99,6 +147,11 @@ export default function CambiaPasswordPage() {
             <Button type="submit" variant="contained" size="large" disabled={pending}>
               {pending ? "Salvataggio…" : "Imposta nuova password"}
             </Button>
+            {!forced && (
+              <Button component={Link} href="/" color="inherit">
+                Annulla
+              </Button>
+            )}
           </Box>
         )}
       </Paper>

@@ -3,10 +3,12 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { getAuthContext } from "@/lib/apiAuth";
+import { recordAudit } from "@/lib/audit";
 import { getClientIp, rateLimit } from "@/lib/rateLimit";
 import { ApiError, handleApiError, parseJsonBody } from "@/lib/apiHelpers";
 
 const ChangePasswordSchema = z.object({
+  currentPassword: z.string().min(1, "Inserisci la password attuale"),
   password: z.string().min(8, "La password deve avere almeno 8 caratteri").max(200),
 });
 
@@ -25,12 +27,31 @@ export async function POST(req: Request) {
     }
 
     const body = await parseJsonBody(req);
-    const { password } = ChangePasswordSchema.parse(body);
-    const passwordHash = await bcrypt.hash(password, 10);
+    const { currentPassword, password } = ChangePasswordSchema.parse(body);
 
-    await db.user.update({
+    // Verifica la password attuale: impedisce a una sessione lasciata aperta di
+    // essere usata per cambiare la password senza conoscere quella corrente.
+    const user = await db.user.findUnique({
       where: { id: auth.userId },
-      data: { passwordHash, forcePasswordChange: false },
+      select: { passwordHash: true },
+    });
+    if (!user) throw new ApiError(404, "Utente non trovato");
+    const ok = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!ok) throw new ApiError(400, "Password attuale non corretta");
+
+    const passwordHash = await bcrypt.hash(password, 10);
+    await db.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id: auth.userId! },
+        data: { passwordHash, forcePasswordChange: false },
+      });
+      await recordAudit(tx, {
+        entity: "User",
+        entityId: auth.userId!,
+        action: "USER_UPDATE",
+        userId: auth.userId,
+        meta: { self: true, passwordChange: true },
+      });
     });
 
     return NextResponse.json({ ok: true });

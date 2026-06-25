@@ -23,6 +23,7 @@ import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import PrivacyTipIcon from "@mui/icons-material/PrivacyTip";
 import HistoryIcon from "@mui/icons-material/History";
+import LockResetIcon from "@mui/icons-material/LockReset";
 import LocalHospitalIcon from "@mui/icons-material/LocalHospital";
 import { useThemeMode, type ThemeMode } from "@/context/ThemeContext";
 import { ROLE_LABEL, hasMinRole } from "@/lib/roles";
@@ -106,6 +107,18 @@ export default function TopBar() {
           </Tooltip>
           {user && (
             <>
+              <Typography
+                variant="body2"
+                sx={{
+                  display: { xs: "none", sm: "block" },
+                  color: "text.secondary",
+                  maxWidth: 180,
+                  ml: 1,
+                }}
+                noWrap
+              >
+                {user.name || user.email}
+              </Typography>
               <Tooltip title="Account">
                 <IconButton
                   onClick={(e) => setAnchorEl(e.currentTarget)}
@@ -136,6 +149,12 @@ export default function TopBar() {
                     <DashboardIcon fontSize="small" />
                   </ListItemIcon>
                   Dashboard
+                </MenuItem>
+                <MenuItem component={Link} href="/cambia-password" onClick={() => setAnchorEl(null)}>
+                  <ListItemIcon>
+                    <LockResetIcon fontSize="small" />
+                  </ListItemIcon>
+                  Cambia password
                 </MenuItem>
                 {isAdmin && (
                   <MenuItem component={Link} href="/admin/utenti" onClick={() => setAnchorEl(null)}>

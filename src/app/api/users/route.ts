@@ -40,7 +40,9 @@ export async function POST(req: Request) {
     const passwordHash = await bcrypt.hash(password, 10);
     const user = await db.$transaction(async (tx) => {
       const created = await tx.user.create({
-        data: { ...rest, passwordHash },
+        // forcePasswordChange: il nuovo utente deve cambiare al primo accesso la
+        // password iniziale scelta dall'amministratore.
+        data: { ...rest, passwordHash, forcePasswordChange: true },
         select: userSelect,
       });
       await recordAudit(tx, {

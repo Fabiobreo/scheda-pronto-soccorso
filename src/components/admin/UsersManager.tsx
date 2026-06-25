@@ -25,9 +25,12 @@ import TextField from "@mui/material/TextField";
 import MenuItem from "@mui/material/MenuItem";
 import FormControlLabel from "@mui/material/FormControlLabel";
 import Switch from "@mui/material/Switch";
+import InputAdornment from "@mui/material/InputAdornment";
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
+import Visibility from "@mui/icons-material/Visibility";
+import VisibilityOff from "@mui/icons-material/VisibilityOff";
 import { useToast } from "@/context/ToastContext";
 import { ROLE_LABEL } from "@/lib/roles";
 import { ROLE_VALUES } from "@/lib/schemas/user";
@@ -66,16 +69,19 @@ export default function UsersManager({
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [toDelete, setToDelete] = useState<UserListItem | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   const openCreate = () => {
     setEditing(null);
     setForm(emptyForm);
+    setShowPassword(false);
     setDialogOpen(true);
   };
 
   const openEdit = (u: UserListItem) => {
     setEditing(u);
     setForm({ email: u.email, name: u.name, password: "", role: u.role, disabled: u.disabled });
+    setShowPassword(false);
     setDialogOpen(true);
   };
 
@@ -198,7 +204,9 @@ export default function UsersManager({
 
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} fullWidth maxWidth="xs">
         <DialogTitle>{editing ? "Modifica utente" : "Nuovo utente"}</DialogTitle>
-        <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2, pt: 1 }}>
+        <DialogContent
+          sx={{ display: "flex", flexDirection: "column", gap: 2, "&&": { pt: 2 } }}
+        >
           <TextField
             label="Email"
             type="email"
@@ -215,10 +223,27 @@ export default function UsersManager({
           />
           <TextField
             label={editing ? "Nuova password (lascia vuoto per non cambiarla)" : "Password"}
-            type="password"
+            type={showPassword ? "text" : "password"}
             value={form.password}
             onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
             fullWidth
+            autoComplete="new-password"
+            slotProps={{
+              input: {
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      onClick={() => setShowPassword((s) => !s)}
+                      edge="end"
+                      aria-label={showPassword ? "Nascondi password" : "Mostra password"}
+                      tabIndex={-1}
+                    >
+                      {showPassword ? <VisibilityOff /> : <Visibility />}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              },
+            }}
           />
           <TextField
             select
