@@ -94,6 +94,16 @@ export async function PUT(req: Request, { params }: Params) {
     // Restituisce l'updatedAt ESATTO del DB: il client lo usa come prossimo token.
     return NextResponse.json({ updatedAt: newUpdatedAt.toISOString() });
   } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002" &&
+      String(error.meta?.constraint ?? "").includes("riferimento")
+    ) {
+      return NextResponse.json(
+        { error: "Il riferimento è già utilizzato da un'altra scheda" },
+        { status: 409 }
+      );
+    }
     return handleApiError(error);
   }
 }

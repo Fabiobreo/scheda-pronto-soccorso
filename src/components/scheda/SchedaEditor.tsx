@@ -234,6 +234,7 @@ export default function SchedaEditor({ scheda }: { scheda: SchedaDTO }) {
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [conflictOpen, setConflictOpen] = useState(false);
+  const [riferimentoError, setRiferimentoError] = useState<string | null>(null);
 
   const lastSavedRef = useRef<string>(JSON.stringify(toContent(scheda)));
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -265,11 +266,14 @@ export default function SchedaEditor({ scheda }: { scheda: SchedaDTO }) {
             lastSavedRef.current = serialized;
             expectedUpdatedAtRef.current = res.updatedAt;
             setSaveStatus("saved");
+            setRiferimentoError(null);
           },
           onError: (e: Error) => {
             setSaveStatus("error");
             if (e.message.includes("modificata altrove")) {
               setConflictOpen(true);
+            } else if (e.message.includes("riferimento")) {
+              setRiferimentoError(e.message);
             } else {
               toastRef.current(e.message, "error");
             }
@@ -317,10 +321,17 @@ export default function SchedaEditor({ scheda }: { scheda: SchedaDTO }) {
             lastSavedRef.current = JSON.stringify(payload);
             expectedUpdatedAtRef.current = res.updatedAt;
             setSaveStatus("saved");
+            setRiferimentoError(null);
           },
           onError: (e: Error) => {
-            setSaveStatus("error");
-            toastRef.current(e.message, "error");
+            if (e.message.includes("riferimento")) {
+              // Conflitto sul riferimento: mostra l'errore inline, non ritentare.
+              setRiferimentoError(e.message);
+              setSaveStatus("idle");
+            } else {
+              setSaveStatus("error");
+              toastRef.current(e.message, "error");
+            }
           },
         }
       );
@@ -338,6 +349,13 @@ export default function SchedaEditor({ scheda }: { scheda: SchedaDTO }) {
 
   // Handler stabili per le sezioni "pesanti" (liste/checkbox/modale): senza
   // questi, le closure inline vanificherebbero il memo dei componenti figli.
+  const setRiferimento = useCallback(
+    (v: string) => {
+      setField("riferimento", v);
+      setRiferimentoError(null);
+    },
+    [setField]
+  );
   const setSintomi = useCallback((v: Sintomi) => setField("sintomi", v), [setField]);
   const setPatologie = useCallback((v: string[]) => setField("patologie", v), [setField]);
   const setParametri = useCallback((v: ParametroVitale[]) => setField("parametri", v), [setField]);
@@ -419,10 +437,12 @@ export default function SchedaEditor({ scheda }: { scheda: SchedaDTO }) {
           lastSavedRef.current = serialized;
           expectedUpdatedAtRef.current = res.updatedAt;
           setSaveStatus("saved");
+          setRiferimentoError(null);
         },
         onError: (e: Error) => {
           setSaveStatus("error");
           if (e.message.includes("modificata altrove")) setConflictOpen(true);
+          else if (e.message.includes("riferimento")) setRiferimentoError(e.message);
           else toastRef.current(e.message, "error");
         },
       }
@@ -450,9 +470,11 @@ export default function SchedaEditor({ scheda }: { scheda: SchedaDTO }) {
         <MemoTextField
           label="Riferimento (iniziali / codice intervento)"
           value={content.riferimento}
-          onChange={strSetter("riferimento")}
+          onChange={setRiferimento}
           size="small"
           sx={riferimentoSx}
+          error={!!riferimentoError}
+          helperText={riferimentoError ?? undefined}
         />
         <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
           <SaveIndicator status={saveStatus} onRetry={handleRetrySave} />
