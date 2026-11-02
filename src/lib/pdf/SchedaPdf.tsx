@@ -3,6 +3,9 @@ import { CATEGORIE_SINTOMI, PARAMETRI_COLONNE } from "@/lib/sintomi";
 import { LABEL_PER_CODICE } from "@/lib/patologie";
 import { STRUTTURA } from "@/lib/config";
 import type { SchedaContent } from "@/lib/scheda";
+import { formatDataIt } from "@/lib/time";
+import type { RisultatoTriage } from "@/lib/triage";
+import { CODICI_LAZIO, CODICI_VENETO, MOTIVI_PER_ID } from "@/lib/triage/tabelle";
 
 // Template PDF deterministico (A4) della scheda. Impaginazione indipendente dal
 // browser: intestazione struttura, sezioni, footer con numero pagina.
@@ -69,11 +72,75 @@ function Campo({ label, value }: { label: string; value: string }) {
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+// Di norma una sezione non si spezza tra due pagine; `wrap` la rende divisibile
+// (per contenuti che possono superare una pagina, come il dettaglio del triage).
+function Section({
+  title,
+  children,
+  wrap = false,
+}: {
+  title: string;
+  children: React.ReactNode;
+  wrap?: boolean;
+}) {
   return (
-    <View style={styles.section} wrap={false}>
-      <Text style={styles.sectionTitle}>{title}</Text>
+    <View style={styles.section} wrap={wrap}>
+      <Text style={styles.sectionTitle} minPresenceAhead={40}>
+        {title}
+      </Text>
       {children}
+    </View>
+  );
+}
+
+// Riepilogo testuale del triage (il PDF non ha accesso al tema MUI: niente colori).
+function TriagePdf({
+  risultato,
+  ora,
+  motivo,
+}: {
+  risultato: RisultatoTriage;
+  ora: string;
+  motivo: string;
+}) {
+  const { lazio, veneto } = risultato;
+  return (
+    <View>
+      {(ora || motivo) && (
+        <Text style={styles.label}>
+          {[ora ? `Ore ${ora}` : "", motivo].filter(Boolean).join(" · ")}
+        </Text>
+      )}
+      {lazio && (
+        <View style={{ marginTop: 3 }}>
+          <Text>
+            <Text style={styles.label}>Modello Lazio: </Text>
+            {`${lazio.codice} – ${CODICI_LAZIO[lazio.codice].nome} (${CODICI_LAZIO[lazio.codice].denominazione}) · ${CODICI_LAZIO[lazio.codice].attesa}`}
+          </Text>
+          {lazio.righe.map((r, i) => (
+            <Text key={i} style={{ marginLeft: 8 }}>
+              [{r.livello}] {r.voce}: {r.dettaglio}
+            </Text>
+          ))}
+        </View>
+      )}
+      {veneto && (
+        <View style={{ marginTop: 3 }}>
+          <Text>
+            <Text style={styles.label}>Modello Veneto: </Text>
+            {`${CODICI_VENETO[veneto.codice].nome} (${CODICI_VENETO[veneto.codice].denominazione}) · ${CODICI_VENETO[veneto.codice].attesa}`}
+          </Text>
+          {veneto.righe.map((r, i) => (
+            <Text key={i} style={{ marginLeft: 8 }}>
+              [{r.livello ?? "–"}] {r.voce}: {r.dettaglio}
+            </Text>
+          ))}
+        </View>
+      )}
+      <Text style={[styles.muted, { marginTop: 3, fontSize: 7 }]}>
+        Strumento di supporto: l’attribuzione finale del codice resta responsabilità dell’infermiere
+        di triage.
+      </Text>
     </View>
   );
 }
@@ -83,7 +150,15 @@ function TestoLibero({ value }: { value: string }) {
   return t ? <Text>{t}</Text> : <Text style={styles.muted}>—</Text>;
 }
 
-export function SchedaPdf({ content, meta }: { content: SchedaContent; meta: SchedaPdfMeta }) {
+export function SchedaPdf({
+  content,
+  meta,
+  triageRisultato,
+}: {
+  content: SchedaContent;
+  meta: SchedaPdfMeta;
+  triageRisultato: RisultatoTriage | null;
+}) {
   const sintomiRighe = CATEGORIE_SINTOMI.map((cat) => {
     const sel = content.sintomi[cat.id];
     if (!sel) return null;
@@ -142,6 +217,16 @@ export function SchedaPdf({ content, meta }: { content: SchedaContent; meta: Sch
             )}
           </Section>
 
+          {triageRisultato && (triageRisultato.lazio || triageRisultato.veneto) && (
+            <Section title="Calcolo codice di triage" wrap>
+              <TriagePdf
+                risultato={triageRisultato}
+                ora={content.triage.ora}
+                motivo={MOTIVI_PER_ID[content.triage.motivo]?.label ?? ""}
+              />
+            </Section>
+          )}
+
           <Section title="Sintomi (SAMPLE)">
             {sintomiRighe.length > 0 ? (
               sintomiRighe.map(({ cat, text }) => (
@@ -169,7 +254,7 @@ export function SchedaPdf({ content, meta }: { content: SchedaContent; meta: Sch
                   <View key={i} style={styles.row}>
                     {PARAMETRI_COLONNE.map((col) => (
                       <Text key={col.campo} style={styles.cell}>
-                        {r[col.campo] || "—"}
+                        {(col.campo === "data" ? formatDataIt(r.data) : r[col.campo]) || "—"}
                       </Text>
                     ))}
                   </View>
@@ -217,7 +302,9 @@ export function SchedaPdf({ content, meta }: { content: SchedaContent; meta: Sch
             {content.diario.length > 0 ? (
               content.diario.map((d, i) => (
                 <Text key={i} style={styles.line}>
-                  <Text style={styles.label}>{d.ora || "—"} </Text>
+                  <Text style={styles.label}>
+                    {[formatDataIt(d.data), d.ora].filter(Boolean).join(" ") || "—"}{" "}
+                  </Text>
                   {d.testo}
                 </Text>
               ))

@@ -128,6 +128,7 @@ export const CATEGORIA_IDS: Set<string> = new Set(CATEGORIE_SINTOMI.map((c) => c
 
 // Colonne della tabella "Monitoraggio parametri", in ordine.
 export const PARAMETRI_COLONNE = [
+  { campo: "data", label: "Data" },
   { campo: "ora", label: "Ora" },
   { campo: "temp", label: "T°" },
   { campo: "spo2", label: "SpO2" },

@@ -12,7 +12,7 @@ import AddIcon from "@mui/icons-material/Add";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import { emptyVoceDiario } from "@/lib/scheda";
-import { nowTime } from "@/lib/time";
+import { nowDate, nowTime } from "@/lib/time";
 import type { VoceDiario } from "@/lib/schemas/scheda";
 
 function DiarioSection({
@@ -25,14 +25,28 @@ function DiarioSection({
   const update = (index: number, patch: Partial<VoceDiario>) => {
     onChange(value.map((row, i) => (i === index ? { ...row, ...patch } : row)));
   };
-  // Nuova riga con l'ora corrente già compilata (caso d'uso più comune sul campo).
-  const addRow = () => onChange([...value, { ...emptyVoceDiario(), ora: nowTime() }]);
+  // Nuova riga con data e ora correnti già compilate (caso d'uso più comune sul campo).
+  const addRow = () =>
+    onChange([...value, { ...emptyVoceDiario(), data: nowDate(), ora: nowTime() }]);
   const removeRow = (index: number) => onChange(value.filter((_, i) => i !== index));
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
       {value.map((row, index) => (
-        <Paper key={index} variant="outlined" sx={{ p: 1.5, display: "flex", gap: 1 }}>
+        <Paper
+          key={index}
+          variant="outlined"
+          sx={{ p: 1.5, display: "flex", flexWrap: { xs: "wrap", sm: "nowrap" }, gap: 1 }}
+        >
+          <TextField
+            label="Data"
+            type="date"
+            value={row.data}
+            onChange={(e) => update(index, { data: e.target.value })}
+            size="small"
+            sx={{ width: 160, flexShrink: 0 }}
+            slotProps={{ inputLabel: { shrink: true } }}
+          />
           <TextField
             label="Ora"
             value={row.ora}
@@ -43,12 +57,12 @@ function DiarioSection({
               input: {
                 endAdornment: (
                   <InputAdornment position="end">
-                    <Tooltip title="Imposta ora corrente">
+                    <Tooltip title="Imposta data e ora correnti">
                       <IconButton
                         size="small"
                         edge="end"
-                        onClick={() => update(index, { ora: nowTime() })}
-                        aria-label="Imposta ora corrente"
+                        onClick={() => update(index, { data: nowDate(), ora: nowTime() })}
+                        aria-label="Imposta data e ora correnti"
                         sx={{ displayPrint: "none" }}
                       >
                         <AccessTimeIcon fontSize="small" />

@@ -15,7 +15,7 @@ import SchedaEditor from "@/components/scheda/SchedaEditor";
 import SchedaView from "@/components/scheda/SchedaView";
 import ShareButton from "@/components/scheda/ShareButton";
 import { db } from "@/lib/db";
-import { etichettaScheda, toContent, type SchedaDTO } from "@/lib/scheda";
+import { etichettaScheda, leggiRisultatoTriage, toContent, type SchedaDTO } from "@/lib/scheda";
 import { schedaDetailSelect } from "@/lib/schedaQueries";
 
 export const dynamic = "force-dynamic";
@@ -35,6 +35,7 @@ export default async function SchedaPage({ params }: { params: Promise<{ id: str
     ...content,
     id: row.id,
     status: row.status,
+    triageRisultato: leggiRisultatoTriage(row.triageRisultato),
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
     completedAt: row.completedAt?.toISOString() ?? null,
@@ -91,7 +92,7 @@ export default async function SchedaPage({ params }: { params: Promise<{ id: str
                 <ShareButton schedaId={scheda.id} etichetta={etichettaScheda(scheda)} />
               </Box>
             </Box>
-            <SchedaView content={content} />
+            <SchedaView content={content} triageRisultato={scheda.triageRisultato} />
           </>
         ) : (
           <SchedaEditor scheda={scheda} />

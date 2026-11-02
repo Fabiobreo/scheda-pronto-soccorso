@@ -1,10 +1,12 @@
 import { z } from "zod";
 import { CATEGORIA_IDS, CODICI_PER_CATEGORIA } from "@/lib/sintomi";
 import { CODICI_PATOLOGIE } from "@/lib/patologie";
+import { TriageInputSchema } from "@/lib/schemas/triage";
 
 // --- Sotto-schemi delle sezioni a righe ripetute ---
 
 export const ParametroVitaleSchema = z.object({
+  data: z.string().max(20).default(""),
   ora: z.string().max(20).default(""),
   temp: z.string().max(20).default(""),
   spo2: z.string().max(20).default(""),
@@ -28,6 +30,7 @@ export const TerapiaSomministrataSchema = z.object({
 export type TerapiaSomministrata = z.infer<typeof TerapiaSomministrataSchema>;
 
 export const VoceDiarioSchema = z.object({
+  data: z.string().max(20).default(""),
   ora: z.string().max(20).default(""),
   testo: z.string().max(2000).default(""),
 });
@@ -111,6 +114,9 @@ const contentShape = {
   addome: z.string().max(500),
   patologie: PatologieSchema,
   esito: z.string().max(1000),
+
+  // Input del calcolo del triage. Il risultato NON è qui: lo calcola il server.
+  triage: TriageInputSchema,
 
   sintomi: SintomiSchema,
   parametri: z.array(ParametroVitaleSchema).max(200),

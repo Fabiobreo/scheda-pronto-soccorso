@@ -4,7 +4,12 @@ import { db } from "@/lib/db";
 import { SchedaUpdateSchema } from "@/lib/schemas/scheda";
 import { recordAudit } from "@/lib/audit";
 import { hasMinRole } from "@/lib/roles";
-import { campiMancantiPerCompletamento, toContent } from "@/lib/scheda";
+import {
+  CAMPI_TRIAGE,
+  calcolaTriageScheda,
+  campiMancantiPerCompletamento,
+  toContent,
+} from "@/lib/scheda";
 import { schedaDetailSelect } from "@/lib/schedaQueries";
 import { ApiError, guard, handleApiError, parseJsonBody } from "@/lib/apiHelpers";
 
@@ -16,7 +21,10 @@ export async function GET(req: Request, { params }: Params) {
 
   try {
     const { id } = await params;
-    const scheda = await db.scheda.findFirst({ where: { id, deletedAt: null }, select: schedaDetailSelect });
+    const scheda = await db.scheda.findFirst({
+      where: { id, deletedAt: null },
+      select: schedaDetailSelect,
+    });
     if (!scheda) throw new ApiError(404, "Scheda non trovata");
     return NextResponse.json(scheda);
   } catch (error) {
@@ -40,6 +48,9 @@ export async function PUT(req: Request, { params }: Params) {
     // l'attore va impostato con la FK scalare completedById, non con `connect`.
     const data: Prisma.SchedaUncheckedUpdateInput = { ...content };
     const completing = status === "COMPLETED";
+    // Il risultato del triage si ricalcola se cambia un suo input (e sempre al
+    // completamento, per congelarlo sullo stato finale).
+    const ricalcolaTriage = completing || CAMPI_TRIAGE.some((k) => k in content);
     if (completing) {
       // Validazione clinica: la scheda è completabile solo se i campi minimi sono
       // presenti. Si valida lo stato FINALE (record corrente + modifiche in arrivo).
@@ -64,6 +75,32 @@ export async function PUT(req: Request, { params }: Params) {
       // e (se fornito) con updatedAt invariato — controllo di concorrenza ottimistica.
       const where: Prisma.SchedaWhereInput = { id, status: "DRAFT", deletedAt: null };
       if (expectedUpdatedAt) where.updatedAt = new Date(expectedUpdatedAt);
+
+      if (ricalcolaTriage) {
+        // L'editor invia l'intero contenuto: in quel caso gli input sono già tutti
+        // nel payload. Altrimenti si integrano con il record, letto nella stessa
+        // transazione (se cambia nel frattempo, l'updateMany fallisce con 409).
+        const { triage, coscienza, vieAeree, dataNascita, data: dataScheda } = content;
+        let base: Parameters<typeof calcolaTriageScheda>[0] | null = null;
+        if (
+          triage &&
+          coscienza !== undefined &&
+          vieAeree !== undefined &&
+          dataNascita !== undefined &&
+          dataScheda !== undefined
+        ) {
+          base = { triage, coscienza, vieAeree, dataNascita, data: dataScheda };
+        } else {
+          const current = await tx.scheda.findFirst({ where, select: schedaDetailSelect });
+          if (current) base = { ...toContent(current), ...content };
+        }
+        if (base) {
+          const risultato = calcolaTriageScheda(base);
+          // RisultatoTriage è un oggetto JSON puro (solo stringhe/numeri/array):
+          // l'interfaccia TS non ha l'index signature richiesta da InputJsonValue.
+          data.triageRisultato = risultato as unknown as Prisma.InputJsonValue;
+        }
+      }
 
       const result = await tx.scheda.updateMany({ where, data });
       if (result.count === 0) {

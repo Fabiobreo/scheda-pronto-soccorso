@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { campiMancantiPerCompletamento } from "./scheda";
+import { calcolaTriageScheda, campiMancantiPerCompletamento, leggiRisultatoTriage } from "./scheda";
 import type { SchedaContent } from "./scheda";
+import { TriageInputSchema } from "./schemas/triage";
 
 // Contenuto vuoto di base (tutti i campi ai default), da personalizzare nei test.
 function emptyContent(): SchedaContent {
@@ -24,6 +25,7 @@ function emptyContent(): SchedaContent {
     addome: "",
     patologie: [],
     esito: "",
+    triage: TriageInputSchema.parse({}),
     sintomi: {},
     parametri: [],
     anamnesi: "",
@@ -63,5 +65,27 @@ describe("campiMancantiPerCompletamento", () => {
   it("ignora i valori composti solo da spazi", () => {
     const c = { ...emptyContent(), cognome: "   ", riferimento: "  ", coscienza: " ", esito: " " };
     expect(campiMancantiPerCompletamento(c).length).toBe(3);
+  });
+});
+
+describe("triage della scheda", () => {
+  it("usa coscienza, vie aeree e data di nascita già presenti nella scheda", () => {
+    const r = calcolaTriageScheda({
+      ...emptyContent(),
+      data: "2026-11-02",
+      dataNascita: "1980-01-01",
+      coscienza: "Reagisce Se Chiamato",
+      vieAeree: "Ostruite",
+    });
+    expect(r.eta).toBe(46);
+    expect(r.lazio?.codice).toBe(1);
+    expect(r.veneto?.codice).toBe("G");
+  });
+
+  it("leggiRisultatoTriage scarta valori non conformi", () => {
+    expect(leggiRisultatoTriage(null)).toBeNull();
+    expect(leggiRisultatoTriage({})).toBeNull();
+    const r = calcolaTriageScheda(emptyContent());
+    expect(leggiRisultatoTriage(JSON.parse(JSON.stringify(r)))).toEqual(r);
   });
 });

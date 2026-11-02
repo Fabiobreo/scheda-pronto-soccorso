@@ -4,7 +4,7 @@ import { renderToBuffer, type DocumentProps } from "@react-pdf/renderer";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import { db } from "@/lib/db";
-import { etichettaScheda, toContent } from "@/lib/scheda";
+import { etichettaScheda, leggiRisultatoTriage, toContent } from "@/lib/scheda";
 import { SchedaPdf, type SchedaPdfMeta } from "@/lib/pdf/SchedaPdf";
 import { schedaDetailSelect } from "@/lib/schedaQueries";
 import { recordAudit } from "@/lib/audit";
@@ -34,7 +34,12 @@ export async function GET(req: Request, { params }: Params) {
     });
     if (!row) throw new ApiError(404, "Scheda non trovata");
 
-    await recordAudit(db, { entity: "Scheda", entityId: id, action: "EXPORT", userId: auth.userId });
+    await recordAudit(db, {
+      entity: "Scheda",
+      entityId: id,
+      action: "EXPORT",
+      userId: auth.userId,
+    });
 
     const content = toContent(row);
     const etichetta = etichettaScheda(content);
@@ -57,6 +62,7 @@ export async function GET(req: Request, { params }: Params) {
     const element = createElement(SchedaPdf, {
       content,
       meta,
+      triageRisultato: leggiRisultatoTriage(row.triageRisultato),
     }) as unknown as ReactElement<DocumentProps>;
     const buffer = await renderToBuffer(element);
 
