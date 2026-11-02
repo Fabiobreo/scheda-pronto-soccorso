@@ -1,6 +1,12 @@
 import { z } from "zod";
 import type { SchedaStatus } from "@prisma/client";
 import {
+  RisultatoTriageSchema,
+  normalizzaTriageInput,
+  type TriageInput,
+} from "@/lib/schemas/triage";
+import { calcolaTriage, type RisultatoTriage } from "@/lib/triage";
+import {
   ParametroVitaleSchema,
   PatologieSchema,
   SintomiSchema,
@@ -36,6 +42,7 @@ export interface SchedaContent {
   addome: string;
   patologie: Patologie;
   esito: string;
+  triage: TriageInput;
   sintomi: Sintomi;
   parametri: ParametroVitale[];
   anamnesi: string;
@@ -52,6 +59,8 @@ export interface SchedaContent {
 export interface SchedaDTO extends SchedaContent {
   id: string;
   status: SchedaStatus;
+  // Risultato del triage salvato dal server (null su schede precedenti al triage).
+  triageRisultato: RisultatoTriage | null;
   createdAt: string;
   updatedAt: string;
   completedAt: string | null;
@@ -119,6 +128,7 @@ const patologieSafe = PatologieSchema.catch([]);
 
 // Riga generica restituita da Prisma (con Json e Date). Normalizziamo a SchedaContent.
 interface SchedaRowLike {
+  triage: unknown;
   sintomi: unknown;
   patologie: unknown;
   parametri: unknown;
@@ -176,6 +186,7 @@ export function toContent(row: SchedaRowLike): SchedaContent {
     addome: row.addome,
     patologie: patologieSafe.parse(row.patologie),
     esito: row.esito,
+    triage: normalizzaTriageInput(row.triage),
     sintomi: sintomiSafe.parse(row.sintomi),
     parametri: parametriArray.parse(row.parametri),
     anamnesi: row.anamnesi,
@@ -201,4 +212,25 @@ export function emptyTerapia(): TerapiaSomministrata {
 
 export function emptyVoceDiario(): VoceDiario {
   return VoceDiarioSchema.parse({});
+}
+
+// --- Triage ---
+
+// Campi della scheda da cui dipende il calcolo del triage: se una PUT ne modifica
+// almeno uno, il server ricalcola e salva il risultato.
+export const CAMPI_TRIAGE = ["triage", "coscienza", "vieAeree", "dataNascita", "data"] as const;
+
+type ContenutoTriage = Pick<SchedaContent, (typeof CAMPI_TRIAGE)[number]>;
+
+export function calcolaTriageScheda(c: ContenutoTriage): RisultatoTriage {
+  return calcolaTriage(c.triage, c);
+}
+
+// Il risultato è scritto solo dal server (calcolaTriageScheda), ma si valida
+// comunque: un valore legacy/corrotto deve dare "nessun risultato", non un crash.
+export function leggiRisultatoTriage(raw: unknown): RisultatoTriage | null {
+  const r = RisultatoTriageSchema.safeParse(raw);
+  if (!r.success) return null;
+  const risultato: RisultatoTriage = r.data;
+  return risultato;
 }

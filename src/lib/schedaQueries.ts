@@ -84,6 +84,8 @@ export const schedaDetailSelect = {
   circolo: true,
   addome: true,
   esito: true,
+  triage: true,
+  triageRisultato: true,
   patologie: true,
   sintomi: true,
   parametri: true,

@@ -16,7 +16,7 @@ import AddIcon from "@mui/icons-material/Add";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import { PARAMETRI_COLONNE } from "@/lib/sintomi";
 import { emptyParametro } from "@/lib/scheda";
-import { nowTime } from "@/lib/time";
+import { nowDate, nowTime } from "@/lib/time";
 import type { ParametroVitale } from "@/lib/schemas/scheda";
 
 type Campo = (typeof PARAMETRI_COLONNE)[number]["campo"];
@@ -32,7 +32,8 @@ function ParametriTable({
     onChange(value.map((row, i) => (i === index ? { ...row, [campo]: val } : row)));
   };
 
-  const addRow = () => onChange([...value, { ...emptyParametro(), ora: nowTime() }]);
+  const addRow = () =>
+    onChange([...value, { ...emptyParametro(), data: nowDate(), ora: nowTime() }]);
   const removeRow = (index: number) => onChange(value.filter((_, i) => i !== index));
 
   return (
@@ -59,7 +60,8 @@ function ParametriTable({
                       onChange={(e) => updateCell(index, col.campo, e.target.value)}
                       variant="standard"
                       size="small"
-                      sx={{ minWidth: col.campo === "ora" ? 64 : 52 }}
+                      type={col.campo === "data" ? "date" : "text"}
+                      sx={{ minWidth: col.campo === "data" ? 128 : col.campo === "ora" ? 64 : 52 }}
                     />
                   </TableCell>
                 ))}

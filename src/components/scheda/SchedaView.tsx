@@ -8,9 +8,13 @@ import TableRow from "@mui/material/TableRow";
 import TableContainer from "@mui/material/TableContainer";
 import Paper from "@mui/material/Paper";
 import Section from "@/components/scheda/Section";
+import TriageRisultato from "@/components/scheda/TriageRisultato";
 import { CATEGORIE_SINTOMI, PARAMETRI_COLONNE } from "@/lib/sintomi";
 import { LABEL_PER_CODICE } from "@/lib/patologie";
 import type { SchedaContent } from "@/lib/scheda";
+import { formatDataIt } from "@/lib/time";
+import type { RisultatoTriage } from "@/lib/triage";
+import { MOTIVI_PER_ID } from "@/lib/triage/tabelle";
 
 function TestoLibero({ value }: { value: string }) {
   const text = value.trim();
@@ -71,7 +75,15 @@ function SintomiView({ sintomi }: { sintomi: SchedaContent["sintomi"] }) {
   );
 }
 
-export default function SchedaView({ content }: { content: SchedaContent }) {
+export default function SchedaView({
+  content,
+  triageRisultato,
+}: {
+  content: SchedaContent;
+  triageRisultato: RisultatoTriage | null;
+}) {
+  const hasTriage = !!triageRisultato && (!!triageRisultato.lazio || !!triageRisultato.veneto);
+  const motivo = MOTIVI_PER_ID[content.triage.motivo];
   const hasParametri = content.parametri.length > 0;
   const hasTerapie = content.terapieSomministrate.length > 0;
   const hasDiario = content.diario.length > 0;
@@ -118,6 +130,16 @@ export default function SchedaView({ content }: { content: SchedaContent }) {
             </Box>
           )}
         </Box>
+        {hasTriage && (
+          <Box sx={{ mt: 2, pt: 2, borderTop: 1, borderColor: "divider" }}>
+            <Typography sx={{ fontWeight: 700, mb: 1 }}>
+              Calcolo codice di triage
+              {content.triage.ora ? ` · ore ${content.triage.ora}` : ""}
+              {motivo ? ` · ${motivo.label}` : ""}
+            </Typography>
+            <TriageRisultato risultato={triageRisultato} />
+          </Box>
+        )}
       </Section>
 
       <Section title="Sintomi (SAMPLE)">
@@ -141,7 +163,9 @@ export default function SchedaView({ content }: { content: SchedaContent }) {
                 {content.parametri.map((row, i) => (
                   <TableRow key={i}>
                     {PARAMETRI_COLONNE.map((col) => (
-                      <TableCell key={col.campo}>{row[col.campo] || "—"}</TableCell>
+                      <TableCell key={col.campo}>
+                        {(col.campo === "data" ? formatDataIt(row.data) : row[col.campo]) || "—"}
+                      </TableCell>
                     ))}
                   </TableRow>
                 ))}
@@ -194,7 +218,7 @@ export default function SchedaView({ content }: { content: SchedaContent }) {
             {content.diario.map((d, i) => (
               <Typography key={i} sx={{ whiteSpace: "pre-wrap" }}>
                 <Typography component="span" sx={{ fontWeight: 700 }}>
-                  {d.ora || "—"}
+                  {[formatDataIt(d.data), d.ora].filter(Boolean).join(" ") || "—"}
                 </Typography>{" "}
                 {d.testo}
               </Typography>

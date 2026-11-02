@@ -61,6 +61,12 @@ scelta rende l'**autosave un singolo `PUT`** (nessun upsert di figli).
   `COMPLETED` ritorna `409`. Passare a `COMPLETED` valorizza `completedAt`/`completedById`.
 - La tassonomia dei sintomi (categorie + voci) è una costante in `src/lib/sintomi.ts`,
   usata sia per renderizzare le checkbox sia per validare i codici salvati.
+- **Calcolo del triage** (modelli Lazio 5 codici + Veneto 4 codici, adulti e pediatrico):
+  funzioni pure in `src/lib/triage/` (tabelle cliniche in `tabelle.ts`), portate 1:1 dal
+  programma del referente clinico. Input in `Scheda.triage` (Json, `TriageInputSchema`);
+  coscienza (→ AVPU), vie aeree e data di nascita sono letti dai campi della scheda.
+  `Scheda.triageRisultato` è **ricalcolato dal server** nella PUT, mai scritto dal client.
+  `codiceTriage` resta la scelta dell'infermiere (il calcolo la suggerisce soltanto).
 
 ## Autenticazione
 

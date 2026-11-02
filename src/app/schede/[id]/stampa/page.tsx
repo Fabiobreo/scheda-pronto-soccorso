@@ -9,14 +9,17 @@ import SchedaView from "@/components/scheda/SchedaView";
 import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { recordAudit } from "@/lib/audit";
-import { etichettaScheda, toContent } from "@/lib/scheda";
+import { etichettaScheda, leggiRisultatoTriage, toContent } from "@/lib/scheda";
 import { schedaDetailSelect } from "@/lib/schedaQueries";
 
 export const dynamic = "force-dynamic";
 
 export default async function StampaPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const row = await db.scheda.findFirst({ where: { id, deletedAt: null }, select: schedaDetailSelect });
+  const row = await db.scheda.findFirst({
+    where: { id, deletedAt: null },
+    select: schedaDetailSelect,
+  });
   if (!row) notFound();
 
   const session = await auth();
@@ -44,7 +47,7 @@ export default async function StampaPage({ params }: { params: Promise<{ id: str
         </Typography>
       </Box>
 
-      <SchedaView content={content} />
+      <SchedaView content={content} triageRisultato={leggiRisultatoTriage(row.triageRisultato)} />
     </Container>
   );
 }

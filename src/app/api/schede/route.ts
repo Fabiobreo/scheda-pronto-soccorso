@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { SchedaCreateSchema } from "@/lib/schemas/scheda";
+import { calcolaTriageScheda } from "@/lib/scheda";
 import { recordAudit } from "@/lib/audit";
 import { listSchede, parseSchedaListParams } from "@/lib/schedaQueries";
 import { guard, handleApiError, parseJsonBody } from "@/lib/apiHelpers";
@@ -36,6 +37,17 @@ export async function POST(req: Request) {
       oraArrivo: now.toTimeString().slice(0, 5), // HH:mm
       ...parsed,
     };
+    // Di norma il body è vuoto; se arriva già un input di triage, il risultato si
+    // calcola qui come nella PUT (mai dal client).
+    const triageRisultato = parsed.triage
+      ? (calcolaTriageScheda({
+          triage: parsed.triage,
+          coscienza: parsed.coscienza ?? "",
+          vieAeree: parsed.vieAeree ?? "",
+          dataNascita: parsed.dataNascita ?? "",
+          data: data.data,
+        }) as unknown as Prisma.InputJsonValue) // oggetto JSON puro, vedi PUT
+      : undefined;
 
     // Retry loop: in caso di collisione sul riferimento (race condition tra richieste
     // concorrenti), si ricalcola il MAX sul DB aggiornato e si riprova. In condizioni
@@ -56,7 +68,12 @@ export async function POST(req: Request) {
           const nextRif = String((row.max ?? 0) + 1);
 
           const created = await tx.scheda.create({
-            data: { ...data, riferimento: data.riferimento ?? nextRif, createdById: auth.userId },
+            data: {
+              ...data,
+              triageRisultato,
+              riferimento: data.riferimento ?? nextRif,
+              createdById: auth.userId,
+            },
           });
           await recordAudit(tx, {
             entity: "Scheda",

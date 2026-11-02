@@ -101,6 +101,13 @@ model Scheda {
   addome    String @default("")
   esito     String @default("")
 
+  // Calcolo del codice di triage (modelli Lazio e Veneto, vedi src/lib/triage).
+  // `triage` = input inseriti dall'infermiere (TriageInputSchema). `triageRisultato`
+  // = risultato RICALCOLATO DAL SERVER a ogni salvataggio rilevante: non è mai
+  // scritto dal client e congela il calcolo al momento del completamento.
+  triage          Json  @default("{}")
+  triageRisultato Json?
+
   // Patologia prevalente: elenco di codici della tassonomia (vedi src/lib/patologie.ts)
   patologie Json @default("[]")
 

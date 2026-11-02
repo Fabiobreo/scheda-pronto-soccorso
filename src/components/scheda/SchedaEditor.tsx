@@ -28,6 +28,7 @@ import PatologieSelect from "@/components/scheda/PatologieSelect";
 import ParametriTable from "@/components/scheda/ParametriTable";
 import TerapieSection from "@/components/scheda/TerapieSection";
 import DiarioSection from "@/components/scheda/DiarioSection";
+import TriageCalculator from "@/components/scheda/TriageCalculator";
 import { useUpdateScheda } from "@/hooks/useSchede";
 import { useToast } from "@/context/ToastContext";
 import {
@@ -42,19 +43,14 @@ import type {
   TerapiaSomministrata,
   VoceDiario,
 } from "@/lib/schemas/scheda";
+import type { TriageInput } from "@/lib/schemas/triage";
+import { COSCIENZA_OPTIONS, MULTI_SEP, VIE_AEREE_OPTIONS, splitMulti } from "@/lib/valutazione";
 
 const AUTOSAVE_DELAY_MS = 1000;
 
 const SESSO_OPTIONS = ["M", "F", "Altro"];
 const TRIAGE_OPTIONS = ["Rosso", "Arancione", "Azzurro", "Verde", "Bianco"];
 const GRUPPO_OPTIONS = ["0+", "0-", "A+", "A-", "B+", "B-", "AB+", "AB-", "Sconosciuto"];
-const COSCIENZA_OPTIONS = [
-  "Vigile",
-  "Agitato/Disorientato",
-  "Reagisce Se Chiamato",
-  "Reagisce Al Dolore",
-  "Privo Di Conoscenza",
-];
 const RESPIRO_OPTIONS = ["Normale", "Tachipnea", "Dispnea", "Assente"];
 const ADDOME_OPTIONS = ["Trattabile", "Dolente", "Vomito", "Diarrea"];
 const CIRCOLO_OPTIONS = [
@@ -66,13 +62,6 @@ const CIRCOLO_OPTIONS = [
   "Dolore Toracico",
   "Assente",
 ];
-const VIE_AEREE_OPTIONS = ["Libere", "Ostruite"];
-
-// I campi della valutazione ABCDE sono String nel DB: le scelte multiple
-// vengono serializzate con questo separatore (assente nelle label) e
-// ri-splittate per la UI.
-const MULTI_SEP = " · ";
-const splitMulti = (v: string) => (v ? v.split(MULTI_SEP) : []);
 
 // sx riutilizzabile per la griglia responsive dei campi.
 const gridSx = {
@@ -216,9 +205,10 @@ const MultiChipSelect = memo(function MultiChipSelect({
 });
 
 function toContent(dto: SchedaDTO): SchedaContent {
-  const { id, status, createdAt, updatedAt, completedAt, ...content } = dto;
+  const { id, status, triageRisultato, createdAt, updatedAt, completedAt, ...content } = dto;
   void id;
   void status;
+  void triageRisultato;
   void createdAt;
   void updatedAt;
   void completedAt;
@@ -337,7 +327,7 @@ export default function SchedaEditor({ scheda }: { scheda: SchedaDTO }) {
       );
     }, 5000);
     return () => clearTimeout(t);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [saveStatus]);
 
   // Stabile (nessuna dipendenza): usa l'updater funzionale, così le callback
@@ -364,6 +354,8 @@ export default function SchedaEditor({ scheda }: { scheda: SchedaDTO }) {
     [setField]
   );
   const setDiario = useCallback((v: VoceDiario[]) => setField("diario", v), [setField]);
+  const setTriage = useCallback((v: TriageInput) => setField("triage", v), [setField]);
+  const setCodiceTriage = useCallback((v: string) => setField("codiceTriage", v), [setField]);
 
   // Factory di setter stabili per chiave: restituisce SEMPRE la stessa funzione
   // per una data chiave, così ogni MemoTextField/MemoSelectField si ri-renderizza
@@ -626,6 +618,16 @@ export default function SchedaEditor({ scheda }: { scheda: SchedaDTO }) {
         <Box sx={patologieBoxSx}>
           <PatologieSelect value={content.patologie} onChange={setPatologie} />
         </Box>
+        <TriageCalculator
+          value={content.triage}
+          onChange={setTriage}
+          coscienza={content.coscienza}
+          vieAeree={content.vieAeree}
+          dataNascita={content.dataNascita}
+          data={content.data}
+          codiceTriage={content.codiceTriage}
+          onApplicaCodice={setCodiceTriage}
+        />
       </Section>
 
       <Section title="Sintomi (SAMPLE)">

@@ -3,7 +3,8 @@ import { createTheme, type ThemeOptions, type Shadows } from "@mui/material/styl
 // Colori del triage (codice di priorità in PS). Definiti nel tema — non
 // hardcodati nei componenti — così il dark mode può usare tonalità con il giusto
 // contrasto. Le chiavi sono in minuscolo (vedi triageKey() in TriageChip).
-export type TriageKey = "rosso" | "arancione" | "azzurro" | "verde" | "bianco";
+// "giallo" esiste solo nel modello Veneto (4 codici); il codice della scheda resta Lazio.
+export type TriageKey = "rosso" | "arancione" | "giallo" | "azzurro" | "verde" | "bianco";
 
 export interface TriageColor {
   main: string;
@@ -23,6 +24,7 @@ declare module "@mui/material/styles" {
 const lightTriage: Record<TriageKey, TriageColor> = {
   rosso: { main: "#d32f2f", contrastText: "#ffffff" },
   arancione: { main: "#ed6c02", contrastText: "#ffffff" },
+  giallo: { main: "#fbc02d", contrastText: "#000000" },
   azzurro: { main: "#0288d1", contrastText: "#ffffff" },
   verde: { main: "#2e7d32", contrastText: "#ffffff" },
   bianco: { main: "#e0e0e0", contrastText: "#212121" },
@@ -31,6 +33,7 @@ const lightTriage: Record<TriageKey, TriageColor> = {
 const darkTriage: Record<TriageKey, TriageColor> = {
   rosso: { main: "#f44336", contrastText: "#000000" },
   arancione: { main: "#ffa726", contrastText: "#000000" },
+  giallo: { main: "#ffee58", contrastText: "#000000" },
   azzurro: { main: "#29b6f6", contrastText: "#000000" },
   verde: { main: "#66bb6a", contrastText: "#000000" },
   bianco: { main: "#f5f5f5", contrastText: "#212121" },
