@@ -114,7 +114,8 @@ model Scheda {
   // Sintomi (SAMPLE): { [categoriaId]: { codici: string[], note?: string } }
   sintomi Json @default("{}")
 
-  // Monitoraggio parametri: [{ ora, temp, spo2, dolore, pa, fc, fr, hgtt, gcs, rts }]
+  // Monitoraggio parametri: [{ data, ora, temp, spo2, dolore, pa, fc, fr, hgtt, gcs, gcsE, gcsV, gcsM, rts }]
+  // gcs (da E+V+M) e rts (Revised Trauma Score) sono ricalcolati dal parse Zod (src/lib/trauma.ts).
   parametri Json @default("[]")
 
   anamnesi               String  @default("")
@@ -123,7 +124,7 @@ model Scheda {
   allergie               String  @default("")
   negaAllergie           Boolean @default(false)
 
-  // Terapia somministrata: [{ ora, farmaco, dose, via, note? }]
+  // Terapia somministrata: [{ data, ora, farmaco, dose, via, note? }]
   terapieSomministrate Json @default("[]")
 
   // Diario clinico: [{ ora, testo }]

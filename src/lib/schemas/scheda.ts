@@ -2,25 +2,34 @@ import { z } from "zod";
 import { CATEGORIA_IDS, CODICI_PER_CATEGORIA } from "@/lib/sintomi";
 import { CODICI_PATOLOGIE } from "@/lib/patologie";
 import { TriageInputSchema } from "@/lib/schemas/triage";
+import { normalizzaParametro } from "@/lib/trauma";
 
 // --- Sotto-schemi delle sezioni a righe ripetute ---
 
-export const ParametroVitaleSchema = z.object({
-  data: z.string().max(20).default(""),
-  ora: z.string().max(20).default(""),
-  temp: z.string().max(20).default(""),
-  spo2: z.string().max(20).default(""),
-  dolore: z.string().max(20).default(""),
-  pa: z.string().max(20).default(""),
-  fc: z.string().max(20).default(""),
-  fr: z.string().max(20).default(""),
-  hgtt: z.string().max(20).default(""),
-  gcs: z.string().max(20).default(""),
-  rts: z.string().max(20).default(""),
-});
+// GCS (da E+V+M) e RTS sono ricalcolati a ogni parse: il server non si fida del client.
+export const ParametroVitaleSchema = z
+  .object({
+    data: z.string().max(20).default(""),
+    ora: z.string().max(20).default(""),
+    temp: z.string().max(20).default(""),
+    spo2: z.string().max(20).default(""),
+    dolore: z.string().max(20).default(""),
+    pa: z.string().max(20).default(""),
+    fc: z.string().max(20).default(""),
+    fr: z.string().max(20).default(""),
+    hgtt: z.string().max(20).default(""),
+    gcs: z.string().max(20).default(""),
+    // Componenti della Glasgow Coma Scale (punti come stringa, "" = non valutato).
+    gcsE: z.string().max(2).default(""),
+    gcsV: z.string().max(2).default(""),
+    gcsM: z.string().max(2).default(""),
+    rts: z.string().max(20).default(""),
+  })
+  .transform(normalizzaParametro);
 export type ParametroVitale = z.infer<typeof ParametroVitaleSchema>;
 
 export const TerapiaSomministrataSchema = z.object({
+  data: z.string().max(20).default(""),
   ora: z.string().max(20).default(""),
   farmaco: z.string().max(200).default(""),
   dose: z.string().max(100).default(""),

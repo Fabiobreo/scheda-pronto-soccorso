@@ -4,6 +4,7 @@ import { LABEL_PER_CODICE } from "@/lib/patologie";
 import { STRUTTURA } from "@/lib/config";
 import type { SchedaContent } from "@/lib/scheda";
 import { formatDataIt } from "@/lib/time";
+import { formatGcs } from "@/lib/trauma";
 import type { RisultatoTriage } from "@/lib/triage";
 import { CODICI_LAZIO, CODICI_VENETO, MOTIVI_PER_ID } from "@/lib/triage/tabelle";
 
@@ -254,7 +255,11 @@ export function SchedaPdf({
                   <View key={i} style={styles.row}>
                     {PARAMETRI_COLONNE.map((col) => (
                       <Text key={col.campo} style={styles.cell}>
-                        {(col.campo === "data" ? formatDataIt(r.data) : r[col.campo]) || "—"}
+                        {(col.campo === "data"
+                          ? formatDataIt(r.data)
+                          : col.campo === "gcs"
+                            ? formatGcs(r)
+                            : r[col.campo]) || "—"}
                       </Text>
                     ))}
                   </View>
@@ -289,7 +294,14 @@ export function SchedaPdf({
             {content.terapieSomministrate.length > 0 ? (
               content.terapieSomministrate.map((t, i) => (
                 <Text key={i} style={styles.line}>
-                  {[t.ora, t.farmaco, t.dose, t.via].filter(Boolean).join(" · ") || "—"}
+                  {[
+                    [formatDataIt(t.data), t.ora].filter(Boolean).join(" "),
+                    t.farmaco,
+                    t.dose,
+                    t.via,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ") || "—"}
                   {t.note.trim() ? ` (${t.note.trim()})` : ""}
                 </Text>
               ))
