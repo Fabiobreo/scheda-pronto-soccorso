@@ -13,6 +13,7 @@ import { CATEGORIE_SINTOMI, PARAMETRI_COLONNE } from "@/lib/sintomi";
 import { LABEL_PER_CODICE } from "@/lib/patologie";
 import type { SchedaContent } from "@/lib/scheda";
 import { formatDataIt } from "@/lib/time";
+import { formatGcs } from "@/lib/trauma";
 import type { RisultatoTriage } from "@/lib/triage";
 import { MOTIVI_PER_ID } from "@/lib/triage/tabelle";
 
@@ -164,7 +165,11 @@ export default function SchedaView({
                   <TableRow key={i}>
                     {PARAMETRI_COLONNE.map((col) => (
                       <TableCell key={col.campo}>
-                        {(col.campo === "data" ? formatDataIt(row.data) : row[col.campo]) || "—"}
+                        {(col.campo === "data"
+                          ? formatDataIt(row.data)
+                          : col.campo === "gcs"
+                            ? formatGcs(row)
+                            : row[col.campo]) || "—"}
                       </TableCell>
                     ))}
                   </TableRow>
@@ -202,7 +207,9 @@ export default function SchedaView({
           <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
             {content.terapieSomministrate.map((t, i) => (
               <Typography key={i}>
-                {[t.ora, t.farmaco, t.dose, t.via].filter(Boolean).join(" · ") || "—"}
+                {[[formatDataIt(t.data), t.ora].filter(Boolean).join(" "), t.farmaco, t.dose, t.via]
+                  .filter(Boolean)
+                  .join(" · ") || "—"}
                 {t.note.trim() ? ` (${t.note.trim()})` : ""}
               </Typography>
             ))}
